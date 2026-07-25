@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RBD Kernstock — Finance Dashboard</title>
+<style>
+  :root{
+    --bg:#0b1220; --panel:#121b2e; --panel2:#0e1626; --border:#22304a;
+    --text:#e7ecf5; --muted:#93a2bd; --accent:#4f8cff; --accent2:#22c9a3;
+    --red:#ff5d6c; --amber:#ffb648; --green:#22c9a3;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:radial-gradient(1200px 800px at 10% -10%, #16223c 0%, var(--bg) 60%);
+    color:var(--text); min-height:100vh;
+  }
+  a{color:inherit;}
+  .wrap{max-width:1360px;margin:0 auto;padding:28px 24px 80px;}
+  header.top{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;margin-bottom:26px;}
+  .brand{display:flex;align-items:center;gap:14px;}
+  .logo{
+    width:46px;height:46px;border-radius:12px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;color:#0b1220;
+    flex-shrink:0;
+  }
+  h1{font-size:20px;margin:0;letter-spacing:.2px;}
+  .sub{color:var(--muted);font-size:13px;margin-top:2px;}
+  .report-date{
+    text-align:right;font-size:13px;color:var(--muted);
+  }
+  .report-date b{color:var(--text);font-size:14px;}
+
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:22px;}
+  .kpi{
+    background:linear-gradient(180deg,var(--panel),var(--panel2));
+    border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px;
+    position:relative; overflow:hidden;
+  }
+  .kpi .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
+  .kpi .value{font-size:22px;font-weight:700;margin-top:6px;}
+  .kpi .bar{height:4px;border-radius:2px;margin-top:12px;background:#1c2740;overflow:hidden;}
+  .kpi .bar span{display:block;height:100%;border-radius:2px;}
+  .kpi.receivables .bar span{background:var(--accent);width:100%;}
+  .kpi.payables .bar span{background:var(--red);width:100%;}
+  .kpi.retention .bar span{background:var(--amber);width:100%;}
+  .kpi.net .bar span{background:var(--green);width:100%;}
+  .kpi.pipeline .bar span{background:#9d7bff;width:100%;}
+
+  .charts{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;margin-bottom:26px;}
+  .charts.charts-single{grid-template-columns:1fr;}
+  @media (max-width:900px){.charts{grid-template-columns:1fr;}}
+
+  .export-row{display:flex;gap:8px;justify-content:flex-end;}
+  .export-btn{
+    background:var(--panel2);border:1px solid var(--border);color:var(--text);
+    padding:7px 13px;border-radius:8px;font-size:12.5px;cursor:pointer;font-weight:600;
+    white-space:nowrap;
+  }
+  .export-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .panel{
+    background:linear-gradient(180deg,var(--panel),var(--panel2));
+    border:1px solid var(--border); border-radius:var(--radius); padding:18px;
+  }
+  .panel h3{margin:0 0 12px; font-size:14px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600;}
+  .chart-box{position:relative;height:280px;}
+
+  nav.tabs{
+    display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px;
+    border-bottom:1px solid var(--border); padding-bottom:0;
+  }
+  nav.tabs button{
+    background:transparent;border:none;color:var(--muted);padding:10px 16px;font-size:13.5px;
+    cursor:pointer;border-radius:10px 10px 0 0; font-weight:600; position:relative; top:1px;
+  }
+  nav.tabs button.active{color:var(--text); background:var(--panel); border:1px solid var(--border); border-bottom:1px solid var(--panel);}
+  nav.tabs button:hover{color:var(--text);}
+
+  .tabpanel{display:none;}
+  .tabpanel.active{display:block;}
+
+  .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
+  .toolbar input[type=text]{
+    background:var(--panel2);border:1px solid var(--border);color:var(--text);
+    padding:9px 14px;border-radius:9px;font-size:13.5px;min-width:240px; outline:none;
+  }
+  .toolbar input[type=text]:focus{border-color:var(--accent);}
+  .toolbar select{
+    background:var(--panel2);border:1px solid var(--border);color:var(--text);
+    padding:9px 12px;border-radius:9px;font-size:13.5px;outline:none;
+  }
+  .toolbar .count{color:var(--muted);font-size:12.5px;margin-left:auto;}
+
+  .table-wrap{
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    overflow:auto; max-height:640px;
+  }
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  thead th{
+    position:sticky; top:0; background:#16203a; color:var(--muted); text-align:left;
+    padding:11px 12px; font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.04em;
+    cursor:pointer; white-space:nowrap; border-bottom:1px solid var(--border); user-select:none;
+  }
+  thead th:hover{color:var(--text);}
+  thead th .arrow{opacity:.5;font-size:10px;margin-left:4px;}
+  tbody td{padding:10px 12px; border-bottom:1px solid #1a2540; vertical-align:top;}
+  tbody tr:hover{background:#16203a;}
+  tbody tr:last-child td{border-bottom:none;}
+  td.num, th.num{text-align:right; font-variant-numeric:tabular-nums;}
+  td.amount{font-weight:600;}
+  .desc-cell{max-width:280px; color:var(--muted); font-size:12.5px;}
+
+  .badge{
+    display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;
+    letter-spacing:.02em; white-space:nowrap;
+  }
+  .badge.pending-collection{background:#3a2a12;color:var(--amber);}
+  .badge.pending-endorsement{background:#1f2a44;color:var(--accent);}
+  .badge.for-billing{background:#2a1f44;color:#c39bff;}
+  .badge.collected, .badge.ongoing{background:#123a2f;color:var(--green);}
+  .badge.default{background:#22304a;color:var(--muted);}
+
+  .days-flag{font-weight:700;}
+  .days-high{color:var(--red);}
+  .days-mid{color:var(--amber);}
+  .days-low{color:var(--green);}
+
+  tfoot td{padding:12px; font-weight:700; background:#0f1830; border-top:2px solid var(--border);}
+
+  footer{text-align:center;color:var(--muted);font-size:12px;margin-top:40px;}
+
+  ::-webkit-scrollbar{width:10px;height:10px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:#26324e;border-radius:6px;}
+  ::-webkit-scrollbar-thumb:hover{background:#324062;}
+
+  .section-title{font-size:15px;font-weight:700;margin:26px 0 12px;color:var(--text);}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media (max-width:900px){.grid-2{grid-template-columns:1fr;}}
+
+  .edit-select, .edit-input{
+    background:var(--panel2); border:1px solid var(--border); color:var(--text);
+    font-size:12px; border-radius:7px; padding:5px 8px; width:100%; min-width:120px;
+    font-family:inherit;
+  }
+  .edit-select{cursor:pointer;}
+  .edit-input{min-width:180px;}
+  .edit-select:focus, .edit-input:focus{outline:none;border-color:var(--accent);}
+  .edit-select[data-current="Collected"]{color:var(--green);border-color:#1d4d40;}
+  .edit-select[data-current="Pending Collection"]{color:var(--amber);border-color:#4d3a1d;}
+  .edit-select[data-current="Pending Endorsement"]{color:var(--accent);border-color:#1d3a5c;}
+  .edit-select[data-current="For Billing"]{color:#c39bff;border-color:#3a1d5c;}
+  .edit-select[data-current="Ongoing"]{color:var(--green);border-color:#1d4d40;}
+  .edit-hint{font-size:10.5px;color:var(--muted);margin-left:2px;}
+
+  .victory-form{
+    display:none; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:14px;
+    background:var(--panel2); border:1px solid var(--border); border-radius:12px; padding:14px;
+  }
+  .victory-form.open{display:flex;}
+  .victory-form input{
+    background:var(--panel); border:1px solid var(--border); color:var(--text);
+    padding:8px 12px; border-radius:8px; font-size:13px;
+  }
+  .victory-form input[name=project]{flex:1;min-width:160px;}
+  .victory-form input[name=amount]{width:140px;}
+  .victory-form input[name=details]{flex:2;min-width:200px;}
+  .victory-form input[name=remarks]{flex:1;min-width:160px;}
+  .btn-primary{
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#0b1220; border:none;
+    padding:8px 16px; border-radius:8px; font-weight:700; font-size:12.5px; cursor:pointer;
+  }
+  .btn-ghost{
+    background:transparent;color:var(--muted);border:1px solid var(--border);
+    padding:8px 14px;border-radius:8px;font-size:12.5px;cursor:pointer;font-weight:600;
+  }
+  .btn-ghost:hover{color:var(--text);border-color:var(--accent);}
+
+  .toast{
+    position:fixed; bottom:24px; right:24px; background:var(--panel); border:1px solid var(--accent2);
+    color:var(--text); padding:13px 18px; border-radius:10px; font-size:13px; box-shadow:0 8px 30px rgba(0,0,0,.4);
+    opacity:0; transform:translateY(8px); transition:opacity .25s, transform .25s; z-index:999; max-width:340px;
+  }
+  .toast.show{opacity:1; transform:translateY(0);}
+
+  .reset-link{color:var(--muted);font-size:11.5px;text-decoration:underline;cursor:pointer;background:none;border:none;}
+  .reset-link:hover{color:var(--red);}
+
+  /* ---------- Mobile ---------- */
+  @media (max-width: 640px){
+    .wrap{padding:16px 12px 60px;}
+    header.top{flex-direction:column;align-items:flex-start;gap:12px;}
+    .report-date{text-align:left;width:100%;}
+    .export-row{justify-content:flex-start;}
+    .kpis{grid-template-columns:1fr 1fr;gap:10px;}
+    .kpi{padding:13px 14px;}
+    .kpi .value{font-size:18px;}
+    nav.tabs{gap:4px;}
+    nav.tabs button{padding:9px 12px;font-size:12.5px;}
+    .toolbar{width:100%;}
+    .toolbar input[type=text]{min-width:0;flex:1 1 100%;}
+    .toolbar select{flex:1 1 auto;}
+    .toolbar .count{margin-left:0;flex:1 1 100%;order:5;}
+    .export-btn{padding:9px 13px;font-size:12px;}
+    table{font-size:12px;}
+    thead th{padding:10px 8px;font-size:10.5px;}
+    tbody td{padding:9px 8px;}
+    .desc-cell{max-width:160px;}
+    .edit-select, .edit-input{min-width:110px;font-size:13px;padding:7px 8px;} /* larger tap targets */
+    .table-wrap{-webkit-overflow-scrolling:touch;max-height:520px;}
+    .victory-form{flex-direction:column;align-items:stretch;}
+    .victory-form input{width:100%;}
+    .btn-primary, .btn-ghost{padding:10px 16px;} /* larger tap targets */
+    .grid-2{grid-template-columns:1fr;}
+    .toast{left:12px;right:12px;bottom:12px;max-width:none;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <div class="logo">RBD</div>
+      <div>
+        <h1>RBD Kernstock — Finance Dashboard</h1>
+        <div class="sub">Payables · Receivables · Retention · Pipeline</div>
+      </div>
+    </div>
+    <div class="report-date">
+      Report generated<br><b id="reportDate">—</b>
+      <div class="export-row" style="margin-top:10px;">
+        <button class="export-btn" id="export-overview-xls">⬇ Excel</button>
+        <button class="export-btn" id="export-overview-pdf">⬇ PDF</button>
+      </div>
+      <div style="margin-top:10px;">
+        <span class="edit-hint" id="syncStatusText">☁ Cloud sync: not configured</span>
+        <button class="reset-link" id="btn-open-cloud-setup" style="margin-left:8px;">Set up</button>
+        <button class="reset-link" id="btn-sync-now" style="margin-left:8px;display:none;">Sync now</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="victory-form" id="cloud-setup-form">
+    <input type="text" id="cloud-url" placeholder="Supabase Project URL (https://xxxx.supabase.co)" style="flex:2;min-width:280px;">
+    <input type="text" id="cloud-anonkey" placeholder="Supabase anon public key" style="flex:2;min-width:280px;">
+    <button class="btn-primary" id="btn-save-cloud">Save &amp; Sync</button>
+    <button class="btn-ghost" id="btn-forget-cloud">Forget this connection</button>
+    <button class="btn-ghost" id="btn-cancel-cloud">Cancel</button>
+    <div class="edit-hint" style="width:100%;margin-top:2px;">
+      Find both under Supabase &rarr; Project Settings &rarr; API, after running "supabase-setup.sql" once in the SQL Editor.
+    </div>
+  </div>
+
+  <div class="kpis" id="kpiGrid"></div>
+
+  <div class="charts charts-single">
+    <div class="panel">
+      <h3>Receivables vs. Payables</h3>
+      <div class="chart-box"><canvas id="cashChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="section-title" style="margin-top:6px;">Top 5 Payables</div>
+  <div class="table-wrap"><table id="t-top5pay"></table></div>
+
+  <div class="section-title">Top 5 Receivables</div>
+  <div class="table-wrap"><table id="t-top5rec"></table></div>
+
+  <div class="section-title">Top 5 Retentions</div>
+  <div class="table-wrap" style="margin-bottom:26px;"><table id="t-top5ret"></table></div>
+
+  <nav class="tabs" id="tabs">
+    <button data-tab="payables" class="active">Payables</button>
+    <button data-tab="receivables">Receivables</button>
+    <button data-tab="retention">Retention</button>
+    <button data-tab="pipeline">Pipeline</button>
+    <button data-tab="collection">Daily Collection Report</button>
+  </nav>
+
+  <div class="tabpanel active" id="tab-payables">
+    <div class="toolbar">
+      <input type="text" id="search-payables" placeholder="Search project, account, description...">
+      <span class="count" id="count-payables"></span>
+      <button class="export-btn" id="export-payables-xls">⬇ Excel</button>
+      <button class="export-btn" id="export-payables-pdf">⬇ PDF</button>
+    </div>
+    <div class="table-wrap"><table id="t-payables"></table></div>
+  </div>
+
+  <div class="tabpanel" id="tab-receivables">
+    <div class="toolbar">
+      <input type="text" id="search-receivables" placeholder="Search client, project, description...">
+      <select id="filter-receivables-status"><option value="">All statuses</option></select>
+      <span class="count" id="count-receivables"></span>
+      <button class="export-btn" id="export-receivables-xls">⬇ Excel</button>
+      <button class="export-btn" id="export-receivables-pdf">⬇ PDF</button>
+    </div>
+    <div class="table-wrap"><table id="t-receivables"></table></div>
+  </div>
+
+  <div class="tabpanel" id="tab-retention">
+    <div class="toolbar">
+      <input type="text" id="search-retention" placeholder="Search client, project, description...">
+      <select id="filter-retention-status"><option value="">All statuses</option></select>
+      <span class="count" id="count-retention"></span>
+      <button class="export-btn" id="export-retention-xls">⬇ Excel</button>
+      <button class="export-btn" id="export-retention-pdf">⬇ PDF</button>
+    </div>
+    <div class="table-wrap"><table id="t-retention"></table></div>
+  </div>
+
+  <div class="tabpanel" id="tab-pipeline">
+    <div class="toolbar">
+      <input type="text" id="search-pipeline" placeholder="Search client, project, system...">
+      <span class="count" id="count-pipeline"></span>
+      <button class="export-btn" id="export-pipeline-xls">⬇ Excel</button>
+      <button class="export-btn" id="export-pipeline-pdf">⬇ PDF</button>
+    </div>
+    <div class="table-wrap"><table id="t-pipeline"></table></div>
+  </div>
+
+  <div class="tabpanel" id="tab-collection">
+    <div class="toolbar">
+      <button class="btn-primary" id="btn-open-victory-form">+ Log a Victory</button>
+      <span class="count"></span>
+      <button class="export-btn" id="export-collection-xls">⬇ Excel</button>
+      <button class="export-btn" id="export-collection-pdf">⬇ PDF</button>
+    </div>
+
+    <div class="victory-form" id="victory-form">
+      <input type="text" name="project" placeholder="Project name">
+      <input type="text" name="amount" placeholder="Amount (₱)">
+      <input type="text" name="details" placeholder="Details">
+      <input type="text" name="remarks" placeholder="Remarks">
+      <button class="btn-primary" id="btn-save-victory">Save</button>
+      <button class="btn-ghost" id="btn-cancel-victory">Cancel</button>
+    </div>
+
+    <div class="section-title">Today's Victories <span class="edit-hint">— statuses marked "Collected" below are logged here automatically</span></div>
+
+    <div class="panel" style="margin-bottom:18px;">
+      <h3>Victories Summary <span class="edit-hint" id="victoriesSummary"></span></h3>
+      <div class="chart-box" style="height:220px;">
+        <canvas id="victoriesChart"></canvas>
+        <div id="victoriesChartEmpty" style="display:none;color:var(--muted);font-size:13px;text-align:center;padding-top:80px;">No victories logged yet today — log one above or mark a status "Collected" and it'll show up here.</div>
+      </div>
+    </div>
+
+    <div class="table-wrap"><table id="t-victories"></table></div>
+
+    <div class="section-title">Collections — Sent Billing (awaiting payment)</div>
+    <div class="table-wrap"><table id="t-sentbilling"></table></div>
+
+    <div class="section-title">Collections — Pending Works / Docs (needs endorsement or billing)</div>
+    <div class="toolbar">
+      <input type="text" id="search-pendingworks" placeholder="Search project, details...">
+      <span class="count" id="count-pendingworks"></span>
+    </div>
+    <div class="table-wrap"><table id="t-pendingworks"></table></div>
+
+    <div class="section-title">Leads / Pipeline (potential contracts)</div>
+    <div class="toolbar">
+      <input type="text" id="search-leads" placeholder="Search project, system...">
+      <span class="count" id="count-leads"></span>
+    </div>
+    <div class="table-wrap"><table id="t-leads"></table></div>
+  </div>
+
+  <footer>
+    Built from "Payables and Receivables Database.xlsx" · All figures in PHP (₱) · Edits are saved in this browser only
+    <div style="margin-top:6px;"><button class="reset-link" id="btn-reset-edits">Reset all edits to original workbook values</button></div>
+  </footer>
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+const DATA = {"reportDate": "2026-07-23", "calc": {"Total Receivables": 20523000.82, "Total Payables": 7088057.8, "Total Retention": 17539490.33, "Net Cash Position": 13434943.02, "Total Sent Billing": 24338904.73, "Total Pending Works": 19905036.67, "Total Pipeline Value": 609205611.3, "Today's Victories": 0}, "payables": [{"date": "2026-07-17", "project": "MISCELLANEOUS", "description": "PR26064 Payment for Waterbill at new Sta Mesa Barracks for the Bill Period -5/22/26-6/25/26", "account": "Kurt Jayoma Balisbisana", "amount": 18980.44, "pct": 0.002677805477, "action": "Outstanding for settlement when new barracks found", "id": "pay-0"}, {"date": "2026-07-17", "project": "MISCELLANEOUS", "description": "Final Payment for NBS Guard House additional CCTV monitor - 20,000", "account": "Value Creation IT Consultancy Services", "amount": 20000.0, "pct": 0.002821647419, "action": "Outstanding Subcon payment when funds are available", "id": "pay-1"}, {"date": "2026-07-17", "project": "NBS QUAD", "description": "NBS Fdas Final Billing - 53,000", "account": "Value Creation IT Consultancy Services", "amount": 53000.0, "pct": 0.007477365661, "action": "Outstanding Subcon payment when funds are available", "id": "pay-2"}, {"date": "2026-07-17", "project": "ACACIA", "description": "Marlon Retention Acacia 69552.71", "account": "Marlon Barquilla BPI", "amount": 69552.71, "pct": 0.009812661234, "action": "Need to agree on net proceeds to be released", "id": "pay-3"}, {"date": "2026-07-17", "project": "Blaine", "description": "Blaine MP-178 = 18,386.69", "account": "Anako Philippine Corporation", "amount": 18386.69, "pct": 0.002594037819, "action": "Outstanding Material purchase to be paid when funds are available", "id": "pay-4"}, {"date": "2026-07-17", "project": "PGH Psychiatric (Ward 7)", "description": "PGH Ward MP-021 = 104,017", "account": "FIM Sales Corporation", "amount": 103088.28, "pct": 0.01454393896, "action": "Outstanding Material purchase to be paid when funds are available", "id": "pay-5"}, {"date": "2026-07-17", "project": "PGH Psychiatric (Ward 7)", "description": "PGH Ward MP-022 = 39,524.8", "account": "FIM Sales Corporation", "amount": 39171.9, "pct": 0.005526464527, "action": "Outstanding Material purchase to be paid when funds are available", "id": "pay-6"}, {"date": "2026-07-17", "project": "Blaine", "description": "Blaine MP-180 = 2,066.9", "account": "FIM Sales Corporation", "amount": 2048.45, "pct": 0.0002890001828, "action": "Outstanding Material purchase to be paid when funds are available", "id": "pay-7"}, {"date": "2026-07-17", "project": "Gliceria", "description": "Gliceria MP-018 = 48,000", "account": "JNGTECH INDUSTRIES", "amount": 48000.0, "pct": 0.006771953807, "action": "Outstanding Material purchase to be paid when funds are available", "id": "pay-8"}, {"date": "2026-07-17", "project": "LONGEVITY PROJECT DESIGN", "description": "Longevity MP-041 = 720", "account": "Jaman products Inc", "amount": 720.0, "pct": 0.0001015793071, "action": "Outstanding Material purchase to be paid when funds are available", "id": "pay-9"}, {"date": "2026-07-17", "project": "NBS QUAD", "description": "NBS MP-098 = 32,040", "account": "Jaman products Inc", "amount": 32040.0, "pct": 0.004520279166, "action": "Outstanding Material purchase to be paid when funds are available", "id": "pay-10"}, {"date": "2026-07-17", "project": "RADISH", "description": "7Radish MP-040 = 1,500", "account": "Imelda Panerio", "amount": 1486.61, "pct": 0.0002097344635, "action": "Outstanding Material purchase to be paid when funds are available", "id": "pay-11"}, {"date": "2026-07-17", "project": "RCB", "description": "PGH RCB MP-003 = 80,964", "account": "Imelda Panerio", "amount": 80241.11, "pct": 0.01132060605, "action": "Outstanding Material purchase to be paid when funds are available", "id": "pay-12"}, {"date": "2026-07-17", "project": "MISCELLANEOUS", "description": "SP-MP-020 = 4,500", "account": "Imelda Panerio", "amount": 4459.82, "pct": 0.0006292019797, "action": "Outstanding Material purchase to be paid when funds are available", "id": "pay-13"}, {"date": "2026-07-17", "project": "MANPOWER OVERHEAD", "description": "For Insurance Every Cutoff", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 23084.57, "pct": 0.003256825868, "action": "Mandatories", "id": "pay-14"}, {"date": "2026-07-17", "project": "MANPOWER OVERHEAD", "description": "For 13th Month Pay Every Cutoff ", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 109157.94, "pct": 0.01540026099, "action": "Mandatories", "id": "pay-15"}, {"date": "2026-07-24", "project": "MANPOWER OVERHEAD", "description": "For 13th Month Pay Every Cutoff ", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 109157.94, "pct": 0.01540026099, "action": "Mandatories", "id": "pay-16"}, {"date": "2026-07-24", "project": "MANPOWER OVERHEAD", "description": "For Insurance Every Cutoff", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 23084.57, "pct": 0.003256825868, "action": "Mandatories", "id": "pay-17"}, {"date": "2026-07-26", "project": "MANPOWER OVERHEAD", "description": "Traviz Monthly Payment", "account": "Bernardino Manuel Payroll", "amount": 26425.0, "pct": 0.003728101653, "action": "Scheduled for Monthly Billing", "id": "pay-18"}, {"date": "2026-07-31", "project": "MANPOWER OVERHEAD", "description": "PR26-061 Legal Fee Php 11,200.00", "account": "PEIG BRAGADO ASSOCIATES", "amount": 11200.0, "pct": 0.001580122555, "action": "Consultancy paid at end of month", "id": "pay-19"}, {"date": "2026-07-31", "project": "MANPOWER OVERHEAD", "description": "PR26-062 Janibert Allowance Php 6,000.00", "account": "Janibert Acosta", "amount": 6000.0, "pct": 0.0008464942258, "action": "Consultancy paid at end of month", "id": "pay-20"}, {"date": "2026-07-31", "project": "MANPOWER OVERHEAD", "description": "PR26-063 HR Fee Php 10,000.00", "account": "ROTHCHIEL GARRIDO", "amount": 10000.0, "pct": 0.00141082371, "action": "Consultancy paid at end of month", "id": "pay-21"}, {"date": "2026-07-31", "project": "MANPOWER OVERHEAD", "description": "PR26-065 50% DP for Company Outing Reservation Php 11,500.00", "account": "Gil Alcalde Jr.", "amount": 11500.0, "pct": 0.001622447266, "action": "Deferred Outing", "id": "pay-22"}, {"date": "2026-07-31", "project": "MANPOWER OVERHEAD", "description": "For Insurance Every Cutoff", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 23084.57, "pct": 0.003256825868, "action": "Mandatories", "id": "pay-23"}, {"date": "2026-07-31", "project": "MANPOWER OVERHEAD", "description": "For 13th Month Pay Every Cutoff ", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 109157.94, "pct": 0.01540026099, "action": "Mandatories", "id": "pay-24"}, {"date": "2026-07-31", "project": "MANPOWER OVERHEAD", "description": "For Insurance Every Cutoff", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 23084.57, "pct": 0.003256825868, "action": "Mandatories", "id": "pay-25"}, {"date": "2026-08-05", "project": "MANPOWER OVERHEAD", "description": "Rent and Cusa August 2026", "account": "Dhondup Holdings Inc", "amount": 55136.96, "pct": 0.007778853045, "action": "PDC", "id": "pay-26"}, {"date": "2026-08-05", "project": "MANPOWER OVERHEAD", "description": "Parking Rent & Cusa", "account": "Dhondup Holdings Inc", "amount": 7528.0, "pct": 0.001062068089, "action": "PDC", "id": "pay-27"}, {"date": "2026-08-06", "project": "GREENER", "description": "GREENER HOUSE SP-017 (DAIKIN)", "account": "DAIKIN AIRCONDITIONING PHILIPPINES INC.", "amount": 24840.0, "pct": 0.003504486095, "action": "PDC", "id": "pay-28"}, {"date": "2026-08-14", "project": "MANPOWER OVERHEAD", "description": "For 13th Month Pay Every Cutoff ", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 109157.94, "pct": 0.01540026099, "action": "Mandatories", "id": "pay-29"}, {"date": "2026-08-14", "project": "MANPOWER OVERHEAD", "description": "For Insurance Every Cutoff", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 23084.57, "pct": 0.003256825868, "action": "Mandatories", "id": "pay-30"}, {"date": "2026-08-16", "project": "Gliceria", "description": "GLICERIA MP-ME- 014 (DAIKIN) Batch Delivery 1", "account": "DAIKIN AIRCONDITIONING PHILIPPINES INC.", "amount": 24570.0, "pct": 0.003466393855, "action": "PDC", "id": "pay-31"}, {"date": "2026-08-22", "project": "PGH RCB", "description": "PGH RCB MP-ME-001 (Daikin) PDC", "account": "DAIKIN AIRCONDITIONING PHILIPPINES INC.", "amount": 3595997.59, "pct": 0.507331866, "action": "PDC", "id": "pay-32"}, {"date": "2026-08-23", "project": "CALATAGAN 2", "description": "Calatagan CP02 MP-PL- 034 (DAIKIN)", "account": "DAIKIN AIRCONDITIONING PHILIPPINES INC.", "amount": 31800.0, "pct": 0.004486419397, "action": "PDC", "id": "pay-33"}, {"date": "2026-08-23", "project": "CALATAGAN 2", "description": "Calatagan CP02 MP-PL- 033 (DAIKIN)", "account": "DAIKIN AIRCONDITIONING PHILIPPINES INC.", "amount": 37560.0, "pct": 0.005299053854, "action": "PDC", "id": "pay-34"}, {"date": "2026-08-26", "project": "MANPOWER OVERHEAD", "description": "Traviz Monthly Payment", "account": "Bernardino Manuel Payroll", "amount": 26425.0, "pct": 0.003728101653, "action": "Scheduled for Monthly Billing", "id": "pay-35"}, {"date": "2026-08-27", "project": "Alitagtag 2", "description": "Alitagtag MP-ME-031", "account": "DAIKIN AIRCONDITIONING PHILIPPINES INC.", "amount": 268870.0, "pct": 0.03793281708, "action": "PDC", "id": "pay-36"}, {"date": "2026-08-28", "project": "MISCELLANEOUS", "description": "SP SIR JEF MP-019", "account": "DAIKIN AIRCONDITIONING PHILIPPINES INC.", "amount": 156375.0, "pct": 0.02206175576, "action": "PDC", "id": "pay-37"}, {"date": "2026-08-31", "project": "MANPOWER OVERHEAD", "description": "For Insurance Every Cutoff", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 23084.57, "pct": 0.003256825868, "action": "Mandatories", "id": "pay-38"}, {"date": "2026-08-31", "project": "MANPOWER OVERHEAD", "description": "For 13th Month Pay Every Cutoff ", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 109157.94, "pct": 0.01540026099, "action": "Mandatories", "id": "pay-39"}, {"date": "2026-09-05", "project": "MANPOWER OVERHEAD", "description": "Rent and Cusa September 2026", "account": "Dhondup Holdings Inc", "amount": 55136.96, "pct": 0.007778853045, "action": "PDC", "id": "pay-40"}, {"date": "2026-09-05", "project": "MANPOWER OVERHEAD", "description": "Parking Rent & Cusa", "account": "Dhondup Holdings Inc", "amount": 7528.0, "pct": 0.001062068089, "action": "PDC", "id": "pay-41"}, {"date": "2026-09-15", "project": "MANPOWER OVERHEAD", "description": "For 13th Month Pay Every Cutoff ", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 109157.94, "pct": 0.01540026099, "action": "Mandatories", "id": "pay-42"}, {"date": "2026-09-15", "project": "MANPOWER OVERHEAD", "description": "For Insurance Every Cutoff", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 23084.57, "pct": 0.003256825868, "action": "Mandatories", "id": "pay-43"}, {"date": "2026-09-26", "project": "MANPOWER OVERHEAD", "description": "Traviz Monthly Payment", "account": "Bernardino Manuel Payroll", "amount": 26425.0, "pct": 0.003728101653, "action": "Scheduled for Monthly Billing", "id": "pay-44"}, {"date": "2026-09-30", "project": "MANPOWER OVERHEAD", "description": "For 13th Month Pay Every Cutoff ", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 109157.94, "pct": 0.01540026099, "action": "Mandatories", "id": "pay-45"}, {"date": "2026-09-30", "project": "MANPOWER OVERHEAD", "description": "For Insurance Every Cutoff", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 23084.57, "pct": 0.003256825868, "action": "Mandatories", "id": "pay-46"}, {"date": "2026-10-05", "project": "MANPOWER OVERHEAD", "description": "Rent and Cusa October 2026", "account": "Dhondup Holdings Inc", "amount": 55136.96, "pct": 0.007778853045, "action": "PDC", "id": "pay-47"}, {"date": "2026-10-05", "project": "MANPOWER OVERHEAD", "description": "Parking Rent & Cusa", "account": "Dhondup Holdings Inc", "amount": 7528.0, "pct": 0.001062068089, "action": "PDC", "id": "pay-48"}, {"date": "2026-10-15", "project": "MANPOWER OVERHEAD", "description": "For 13th Month Pay Every Cutoff ", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 109157.94, "pct": 0.01540026099, "action": "Mandatories", "id": "pay-49"}, {"date": "2026-10-15", "project": "MANPOWER OVERHEAD", "description": "For Insurance Every Cutoff", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 23084.57, "pct": 0.003256825868, "action": "Mandatories", "id": "pay-50"}, {"date": "2026-10-26", "project": "MANPOWER OVERHEAD", "description": "Traviz Monthly Payment", "account": "Bernardino Manuel Payroll", "amount": 26425.0, "pct": 0.003728101653, "action": "Scheduled for Monthly Billing", "id": "pay-51"}, {"date": "2026-10-30", "project": "MANPOWER OVERHEAD", "description": "For Insurance Every Cutoff", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 23084.57, "pct": 0.003256825868, "action": "Mandatories", "id": "pay-52"}, {"date": "2026-10-30", "project": "MANPOWER OVERHEAD", "description": "For 13th Month Pay Every Cutoff ", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 109157.94, "pct": 0.01540026099, "action": "Mandatories", "id": "pay-53"}, {"date": "2026-11-05", "project": "MANPOWER OVERHEAD", "description": "Rent and Cusa November 2026", "account": "Dhondup Holdings Inc", "amount": 55136.96, "pct": 0.007778853045, "action": "PDC", "id": "pay-54"}, {"date": "2026-11-05", "project": "MANPOWER OVERHEAD", "description": "Parking Rent & Cusa", "account": "Dhondup Holdings Inc", "amount": 7528.0, "pct": 0.001062068089, "action": "PDC", "id": "pay-55"}, {"date": "2026-11-13", "project": "MANPOWER OVERHEAD", "description": "For 13th Month Pay Every Cutoff ", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 109157.94, "pct": 0.01540026099, "action": "Mandatories", "id": "pay-56"}, {"date": "2026-11-13", "project": "MANPOWER OVERHEAD", "description": "For Insurance Every Cutoff", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 23084.57, "pct": 0.003256825868, "action": "Mandatories", "id": "pay-57"}, {"date": "2026-11-26", "project": "MANPOWER OVERHEAD", "description": "Traviz Monthly Payment", "account": "Bernardino Manuel Payroll", "amount": 26425.0, "pct": 0.003728101653, "action": "Scheduled for Monthly Billing", "id": "pay-58"}, {"date": "2026-11-30", "project": "MANPOWER OVERHEAD", "description": "For 13th Month Pay Every Cutoff ", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 109157.94, "pct": 0.01540026099, "action": "Mandatories", "id": "pay-59"}, {"date": "2026-11-30", "project": "MANPOWER OVERHEAD", "description": "For Insurance Every Cutoff", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 23084.57, "pct": 0.003256825868, "action": "Mandatories", "id": "pay-60"}, {"date": "2026-12-05", "project": "MANPOWER OVERHEAD", "description": "Parking Rent & Cusa", "account": "Dhondup Holdings Inc", "amount": 7528.0, "pct": 0.001062068089, "action": "PDC", "id": "pay-61"}, {"date": "2026-12-15", "project": "MANPOWER OVERHEAD", "description": "For 13th Month Pay Every Cutoff ", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 109157.94, "pct": 0.01540026099, "action": "Mandatories", "id": "pay-62"}, {"date": "2026-12-15", "project": "MANPOWER OVERHEAD", "description": "For Insurance Every Cutoff", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 23084.57, "pct": 0.003256825868, "action": "Mandatories", "id": "pay-63"}, {"date": "2026-12-26", "project": "MANPOWER OVERHEAD", "description": "Traviz Monthly Payment", "account": "Bernardino Manuel Payroll", "amount": 26425.0, "pct": 0.003728101653, "action": "Scheduled for Monthly Billing", "id": "pay-64"}, {"date": "2026-12-31", "project": "MANPOWER OVERHEAD", "description": "For 13th Month Pay Every Cutoff ", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 109157.94, "pct": 0.01540026099, "action": "Mandatories", "id": "pay-65"}, {"date": "2026-12-31", "project": "MANPOWER OVERHEAD", "description": "For Insurance Every Cutoff", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 23084.57, "pct": 0.003256825868, "action": "Mandatories", "id": "pay-66"}, {"date": "2027-01-05", "project": "MANPOWER OVERHEAD", "description": "Parking Rent & Cusa", "account": "Dhondup Holdings Inc", "amount": 7528.0, "pct": 0.001062068089, "action": "PDC", "id": "pay-67"}, {"date": "2027-01-15", "project": "MANPOWER OVERHEAD", "description": "For 13th Month Pay Every Cutoff ", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 109157.94, "pct": 0.01540026099, "action": "Mandatories", "id": "pay-68"}, {"date": "2027-01-15", "project": "MANPOWER OVERHEAD", "description": "For Insurance Every Cutoff", "account": "RBD KERNSTOCK CORPORATION Tax", "amount": 23084.57, "pct": 0.003256825868, "action": "Mandatories", "id": "pay-69"}, {"date": "2027-01-26", "project": "MANPOWER OVERHEAD", "description": "Traviz Monthly Payment", "account": "Bernardino Manuel Payroll", "amount": 26425.0, "pct": 0.003728101653, "action": "Scheduled for Monthly Billing", "id": "pay-70"}, {"date": "2027-02-26", "project": "MANPOWER OVERHEAD", "description": "Traviz Monthly Payment", "account": "Bernardino Manuel Payroll", "amount": 26425.0, "pct": 0.003728101653, "action": "Scheduled for Monthly Billing", "id": "pay-71"}, {"date": "2027-03-26", "project": "MANPOWER OVERHEAD", "description": "Traviz Monthly Payment", "account": "Bernardino Manuel Payroll", "amount": 26425.0, "pct": 0.003728101653, "action": "Scheduled for Monthly Billing", "id": "pay-72"}, {"date": "2027-04-26", "project": "MANPOWER OVERHEAD", "description": "Traviz Monthly Payment", "account": "Bernardino Manuel Payroll", "amount": 26425.0, "pct": 0.003728101653, "action": "Scheduled for Monthly Billing", "id": "pay-73"}, {"date": "2026-07-24", "project": "MISCELLANEOUS", "description": "Payment for Electric Bill for Sta Mesa Barracks", "account": null, "amount": 13723.65, "pct": 0.00193616508, "action": null, "id": "pay-74"}], "receivables": [{"date": "2026-07-17", "client": "B2C", "project": "217 ACACIA", "description": "- B13 - 100%", "billed": 200855.45, "expected": 167752.01, "pct": 0.008173853886, "action": "needs full endorsement", "status": "Pending Endorsement", "days": "6 days", "id": "rec-0"}, {"date": "2025-05-30", "client": "ATTY PIEG", "project": "Abra Special Project Phase 1", "description": "- B1", "billed": 868745.32, "expected": 390504.32, "pct": 0.01902764237, "action": "Outstanding balance to be billed", "status": "For Billing", "days": "419 days", "id": "rec-1"}, {"date": null, "client": "ATTY PIEG", "project": "Abra Special Project Phase 2", "description": "- B1", "billed": 152444.2, "expected": 152444.2, "pct": 0.007427968324, "action": "to be added to Gliceria", "status": "For Billing", "days": "no date available", "id": "rec-2"}, {"date": "2026-07-16", "client": "RMVG", "project": "ASLDP", "description": "- B4 (CO2B1)", "billed": 48210.61, "expected": 48210.61, "pct": 0.002349101402, "action": "needs full endorsement", "status": "Pending Endorsement", "days": "7 days", "id": "rec-3"}, {"date": "2026-05-12", "client": "B2C", "project": "Badoc", "description": "- Progress Billing No. 10 (CO3 B1)", "billed": 229953.0, "expected": 206957.7, "pct": 0.0100841832, "action": "needs full endorsement", "status": "Pending Endorsement", "days": "72 days", "id": "rec-4"}, {"date": "2026-06-08", "client": "B2C", "project": "Badoc", "description": "- Progress Billing No. 11 (CO3B1, CO4B1)", "billed": 110764.8, "expected": 99688.32, "pct": 0.004857394924, "action": "needs full endorsement", "status": "Pending Endorsement", "days": "45 days", "id": "rec-5"}, {"date": "2026-02-17", "client": "B2C", "project": "Banaue", "description": "- B9 - 100%", "billed": 82741.5, "expected": 57919.05, "pct": 0.002822153081, "action": "Billed with full endorsement to B2C", "status": "Pending Collection", "days": "156 days", "id": "rec-6"}, {"date": "2024-08-08", "client": "B2C", "project": "BATASAN / CONGRESS", "description": "- CO1 B1", "billed": 977967.55, "expected": 880170.8, "pct": 0.04288704209, "action": "Following up with B2C but Sir Vas needs to recon with Excell", "status": "Pending Collection", "days": "714 days", "id": "rec-7"}, {"date": "2026-05-08", "client": "B2C", "project": "Calatagan CP-02 (direct with Owner)", "description": "- Billing no. 12 (CO5 B1)", "billed": 18813.4, "expected": 16932.06, "pct": 0.0008250284716, "action": "needs full endorsement", "status": "Pending Endorsement", "days": "76 days", "id": "rec-8"}, {"date": "2026-01-29", "client": "S'MARK", "project": "Cerilo", "description": "- B1 - 100%", "billed": 58500.0, "expected": 29375.0, "pct": 0.0014313209, "action": "needs full endorsement", "status": "Pending Endorsement", "days": "175 days", "id": "rec-9"}, {"date": "2025-01-27", "client": "Chuahiok", "project": "Chuahiok", "description": "- No record of Billing no.", "billed": 53750.0, "expected": 53750.0, "pct": 0.00261901271, "action": "needs full endorsement", "status": "Pending Endorsement", "days": "542 days", "id": "rec-10"}, {"date": "2026-07-14", "client": "B2C", "project": "GLICERIA", "description": "- B5", "billed": 692198.45, "expected": 519148.84, "pct": 0.02529595182, "action": "Billed with full endorsement to B2C", "status": "Pending Collection", "days": "9 days", "id": "rec-11"}, {"date": "2026-04-13", "client": "JEJORS", "project": "MRT 3 Phase 1", "description": "- B3", "billed": 412239.94, "expected": 288567.96, "pct": 0.01406070986, "action": "For update", "status": "Pending Endorsement", "days": "101 days", "id": "rec-12"}, {"date": "2026-06-26", "client": "JEJORS", "project": "MRT 3 Phase 1", "description": "- B4", "billed": 592983.09, "expected": 415088.16, "pct": 0.02022551008, "action": "For update", "status": "Pending Endorsement", "days": "27 days", "id": "rec-13"}, {"date": "2026-02-16", "client": "B2C", "project": "NBS", "description": "- Phase 2 B8 - 100% Final Billing", "billed": 287545.86, "expected": 172527.52, "pct": 0.008406544516, "action": "needs full endorsement", "status": "Pending Endorsement", "days": "157 days", "id": "rec-14"}, {"date": "2026-07-01", "client": "B2C", "project": "NBS", "description": "- Phase 6 Billing no. 01", "billed": 326761.55, "expected": 294085.4, "pct": 0.01432955164, "action": "needs full endorsement", "status": "Pending Endorsement", "days": "22 days", "id": "rec-15"}, {"date": "2026-07-20", "client": "ASTRO", "project": "NBS - ASTRO", "description": "- B3", "billed": 350024.75, "expected": 245017.33, "pct": 0.0119386698, "action": "needs full endorsement", "status": "Pending Endorsement", "days": "3 days", "id": "rec-16"}, {"date": "2026-06-26", "client": "GADJAH", "project": "NBS - GADJAH", "description": "- WATER METER B1", "billed": 9775.92, "expected": 9775.92, "pct": 0.0004763396974, "action": "needs full endorsement", "status": "Pending Endorsement", "days": "27 days", "id": "rec-17"}, {"date": "2026-07-10", "client": "GADJAH", "project": "NBS - GADJAH", "description": "- FIBER OPTIC", "billed": 12360.32, "expected": 12360.32, "pct": 0.0006022667011, "action": "needs full endorsement", "status": "Pending Endorsement", "days": "13 days", "id": "rec-18"}, {"date": "2026-01-08", "client": "PLUCK", "project": "NBS - PLUCK (TENANT K)", "description": "- FIRE PRO B1", "billed": 123543.48, "expected": 86480.44, "pct": 0.004213830168, "action": "needs full endorsement", "status": "Pending Endorsement", "days": "196 days", "id": "rec-19"}, {"date": "2025-12-15", "client": "CASA EUROPA", "project": "NBS - Porcelanosa", "description": "- ADDL AC, EMERGENCY & EXIT LIGHT - 30%DP", "billed": 184931.98, "expected": 184931.98, "pct": 0.009010961975, "action": "needs full endorsement", "status": "Pending Endorsement", "days": "220 days", "id": "rec-20"}, {"date": "2026-06-18", "client": "ARCH SARAH", "project": "NBS - Type A & Roaster", "description": "- Additional AC Works B1", "billed": 265311.29, "expected": 132655.65, "pct": 0.006463755041, "action": "needs full endorsement", "status": "Pending Endorsement", "days": "35 days", "id": "rec-21"}, {"date": "2026-07-22", "client": "ARCH SARAH", "project": "NBS - Type A & Roaster", "description": "- Additional AC Works B2", "billed": 33117.7, "expected": 16558.85, "pct": 0.0008068435092, "action": "needs full endorsement", "status": "Pending Endorsement", "days": "1 days", "id": "rec-22"}, {"date": "2026-07-07", "client": "B2C", "project": "NBS QACC RENOVATION", "description": "- 30%DP", "billed": 810000.0, "expected": 810000.0, "pct": 0.03946791247, "action": "B2C Finalizing NTP - Request for DP already submitted", "status": "Pending Collection", "days": "16 days", "id": "rec-23"}, {"date": "2026-07-20", "client": "B2C", "project": "NBS QACC STP", "description": "- B1", "billed": 828847.57, "expected": 497308.54, "pct": 0.02423176534, "action": "needs full endorsement", "status": "Pending Endorsement", "days": "3 days", "id": "rec-24"}, {"date": "2026-01-31", "client": "S'JEFF", "project": "NLC", "description": "- B2 - 100%", "billed": 65000.0, "expected": 65000.0, "pct": 0.003167178161, "action": "considered paid and charged to 1m", "status": "Collected", "days": "173 days", "id": "rec-25"}, {"date": "2026-06-17", "client": "B2C", "project": "PGH Bone Marrow Transplant", "description": "- B9 (CO3 EOT, UPS, Water Fltr, RO Deduct B1)", "billed": 333713.02, "expected": 300341.72, "pct": 0.01463439595, "action": "partial was released", "status": "Pending Collection", "days": "36 days", "id": "rec-26"}, {"date": "2026-02-16", "client": "RMVG", "project": "PGH Psychiatric (Ward 7)", "description": "- B5 (Contract B4)", "billed": 1508194.01, "expected": 1495920.8900000001, "pct": 0.07288996883, "action": "sum of all outstanding billings", "status": "Pending Collection", "days": "157 days", "id": "rec-27"}, {"date": "2026-03-19", "client": "RMVG", "project": "PGH Psychiatric (Ward 7)", "description": "- B6 (Contract B5)", "billed": 1328605.92, "expected": null, "pct": 0, "action": null, "status": "Pending Collection", "days": "126 days", "id": "rec-28"}, {"date": "2026-06-26", "client": "RMVG", "project": "PGH Psychiatric (Ward 7)", "description": "- B7 (CO2 B1)", "billed": 48712.15, "expected": null, "pct": 0, "action": null, "status": "Pending Collection", "days": "27 days", "id": "rec-29"}, {"date": "2026-07-01", "client": "JEJORS", "project": "PGH RCB", "description": "- B1", "billed": 12007567.85, "expected": 12007567.85, "pct": 0.5850785641, "action": "Bill sent but needs to be revised; need to determine which portion will go to RBDK", "status": "Pending Collection", "days": "22 days", "id": "rec-30"}, {"date": "2025-11-04", "client": "M'NEMA", "project": "RRLC", "description": "- M'Nema's Existing Bldg for Design to Upgrade Mechanical", "billed": 40000.0, "expected": 40000.0, "pct": 0.001949032715, "action": "For update", "status": "Pending Endorsement", "days": "261 days", "id": "rec-31"}, {"date": "2026-07-21", "client": "Sir Jeff", "project": "Sir Jeff AC Replacement", "description": "- Billing no. 01", "billed": 69060.0, "expected": 69060.0, "pct": 0.003365004982, "action": "For update", "status": "Pending Endorsement", "days": "2 days", "id": "rec-32"}, {"date": "2026-07-08", "client": "ARCH SARA", "project": "UPTON RESIDENCES", "description": "- B1", "billed": 125440.0, "expected": 125440.0, "pct": 0.006112166593, "action": "For update", "status": "Pending Endorsement", "days": "15 days", "id": "rec-33"}, {"date": "2025-03-26", "client": "RMVG", "project": "Vetmate", "description": "- PB11 (Contract B8, CO2 B5)", "billed": 2141404.88, "expected": 443164.74, "pct": 0.02159356441, "action": "Billed but not yet released", "status": "Pending Collection", "days": "484 days", "id": "rec-34"}, {"date": null, "client": "ATTY PIEG", "project": "Vigan 02", "description": "- B1", "billed": 188294.64, "expected": 188294.64, "pct": 0.009174810334, "action": "Charge to Jasper Viloria", "status": "Pending Collection", "days": "no date available", "id": "rec-35"}], "retention": [{"date": "2024-08-08", "client": "B2C", "project": "Batasan / Congress", "description": "- Retention", "billed": 441505.41, "expected": 441505.41, "pct": 0.02517207751, "action": "billed but only partially released", "status": "Pending Endorsement", "days": "714 days", "id": "ret-0"}, {"date": "2024-11-27", "client": "MANA", "project": "Ricos Caf\u00e9", "description": "- Retention (yung balance kay techno na rin ito mapupunta)", "billed": 1723381.5, "expected": 561211.63, "pct": 0.03199703181, "action": "balance to technocycle", "status": "Pending Collection", "days": "603 days", "id": "ret-1"}, {"date": "2025-11-06", "client": "RMVG", "project": "PGH ULTRASOUND", "description": "- Retention", "billed": 293285.4, "expected": 293285.4, "pct": 0.01672143229, "action": "not yet billed", "status": "Pending Endorsement", "days": "259 days", "id": "ret-2"}, {"date": "2025-11-17", "client": "CASA EUROPA", "project": "NBS PORCELANOSA", "description": "- EL-PL RETENTION REQUEST", "billed": 202148.6, "expected": 202148.6, "pct": 0.0115253406, "action": "partial release", "status": "Pending Collection", "days": "248 days", "id": "ret-3"}, {"date": "2026-02-17", "client": "B2C", "project": "Banaue", "description": "- Retention", "billed": 505466.89, "expected": 505466.89, "pct": 0.02881879008, "action": "upon sale of property", "status": "Pending Collection", "days": "156 days", "id": "ret-4"}, {"date": "2026-04-22", "client": "B2C", "project": "Calatagan CP-01", "description": "- Retention", "billed": 176444.96, "expected": 176444.96, "pct": 0.01005986814, "action": "not yet billed", "status": "Pending Endorsement", "days": "92 days", "id": "ret-5"}, {"date": "2026-05-06", "client": "B2C", "project": "9LEO", "description": "- Retention from B2C", "billed": 372971.56, "expected": 372971.56, "pct": 0.02126467491, "action": "not yet billed", "status": "Pending Endorsement", "days": "78 days", "id": "ret-6"}, {"date": "2026-05-06", "client": "OWNER", "project": "9LEO", "description": "- Retention direct from Owner", "billed": 87895.29, "expected": 87895.29, "pct": 0.005011279595, "action": "not yet billed", "status": "Pending Endorsement", "days": "78 days", "id": "ret-7"}, {"date": "2026-05-12", "client": "B2C", "project": "217 Acacia", "description": "- Retention", "billed": 615507.77, "expected": 615507.77, "pct": 0.03509268276, "action": "billed but waiting for 100% billing before release", "status": "Pending Collection", "days": "72 days", "id": "ret-8"}, {"date": "2026-05-12", "client": "B2C", "project": "Aboitiz", "description": "- Retention (Excluding Pending CO)", "billed": 1145794.74, "expected": 1145794.74, "pct": 0.06532656984, "action": "not yet billed", "status": "Pending Endorsement", "days": "72 days", "id": "ret-9"}, {"date": "2026-05-12", "client": "B2C", "project": "Badoc", "description": "- ME Works Retention", "billed": 125000.0, "expected": 125000.0, "pct": 0.007126774932, "action": "not yet billed", "status": "Pending Endorsement", "days": "72 days", "id": "ret-10"}, {"date": "2026-05-12", "client": "B2C", "project": "NBS", "description": "- Retention Phase 1", "billed": 1108000.0, "expected": 1108000.0, "pct": 0.063171733, "action": "Billed to B2C", "status": "Pending Collection", "days": "72 days", "id": "ret-11"}, {"date": "2026-05-12", "client": "B2C", "project": "NBS", "description": "- Retention Phase 2", "billed": 2160000.0, "expected": 2160000.0, "pct": 0.1231506708, "action": "not yet billed", "status": "Pending Endorsement", "days": "72 days", "id": "ret-12"}, {"date": "2026-05-12", "client": "CASA EUROPA", "project": "NBS PORCELANOSA", "description": "- AddL AC (Base onRev.03 EE Plan)", "billed": 70000.0, "expected": 70000.0, "pct": 0.003990993962, "action": "not yet billed", "status": "Pending Endorsement", "days": "72 days", "id": "ret-13"}, {"date": "2026-05-20", "client": "RMVG", "project": "VETMATE", "description": "- Retention", "billed": 1723381.5, "expected": 1723381.5, "pct": 0.09825721658, "action": "not yet billed", "status": "Pending Endorsement", "days": "64 days", "id": "ret-14"}, {"date": null, "client": "B2C", "project": "7 Radish - non vat", "description": "- Contract Retention", "billed": 326739.3, "expected": 326739.3, "pct": 0.01862877962, "action": "not yet billed", "status": "Pending Endorsement", "days": "no date available", "id": "ret-15"}, {"date": null, "client": "B2C", "project": "7 Radish - non vat", "description": "- CO1 Retetion", "billed": 6000.0, "expected": 6000.0, "pct": 0.0003420851967, "action": "not yet billed", "status": "Pending Endorsement", "days": "no date available", "id": "ret-16"}, {"date": null, "client": "B2C", "project": "7 Radish - non vat", "description": "- CO2 Retetion", "billed": 16428.63, "expected": 16428.63, "pct": 0.0009366651876, "action": "not yet billed", "status": "Pending Endorsement", "days": "no date available", "id": "ret-17"}, {"date": null, "client": "B2C", "project": "7 Radish - non vat", "description": "- CO3 Retetion", "billed": 15500.0, "expected": 15500.0, "pct": 0.0008837200915, "action": "not yet billed", "status": "Pending Endorsement", "days": "no date available", "id": "ret-18"}, {"date": null, "client": "B2C", "project": "Badoc", "description": "- Contract Retention", "billed": 284864.68, "expected": 284864.68, "pct": 0.01624133168, "action": "not yet billed", "status": "Pending Endorsement", "days": "no date available", "id": "ret-19"}, {"date": null, "client": "B2C", "project": "Badoc", "description": "- CO1 retention", "billed": 4607.48, "expected": 4607.48, "pct": 0.0002626917837, "action": "not yet billed", "status": "Pending Endorsement", "days": "no date available", "id": "ret-20"}, {"date": null, "client": "B2C", "project": "Badoc", "description": "- CO2 retention", "billed": 22995.3, "expected": 22995.3, "pct": 0.001311058621, "action": "not yet billed", "status": "Pending Endorsement", "days": "no date available", "id": "ret-21"}, {"date": null, "client": "B2C", "project": "Badoc", "description": "- Various Addl Works (Pending CO) retention", "billed": 9702.28, "expected": 9702.28, "pct": 0.0005531677271, "action": "not yet billed", "status": "Pending Endorsement", "days": "no date available", "id": "ret-22"}, {"date": null, "client": "B2C", "project": "Badoc", "description": "- EOT (Pending CO) retention", "billed": 21500.0, "expected": 21500.0, "pct": 0.001225805288, "action": "not yet billed", "status": "Pending Endorsement", "days": "no date available", "id": "ret-23"}, {"date": null, "client": "B2C", "project": "Blaine", "description": "- Contract Retention", "billed": 19.0, "expected": 46118.0, "pct": 0.00262938085, "action": "not yet billed", "status": "Pending Endorsement", "days": "no date available", "id": "ret-24"}, {"date": null, "client": "B2C", "project": "Blaine", "description": "- Contract Retention", "billed": 1560000.0, "expected": 1560000.0, "pct": 0.08894215115, "action": "not yet billed", "status": "Pending Endorsement", "days": "no date available", "id": "ret-25"}, {"date": null, "client": "B2C", "project": "Blaine", "description": "- CO2 Retention", "billed": 844100.0, "expected": 844100.0, "pct": 0.04812568576, "action": "not yet billed", "status": "Pending Endorsement", "days": "no date available", "id": "ret-26"}, {"date": null, "client": "B2C", "project": "Calatagan", "description": "- CP-02 Retention", "billed": 329064.6, "expected": 329064.6, "pct": 0.01876135474, "action": "not yet billed", "status": "Pending Endorsement", "days": "no date available", "id": "ret-27"}, {"date": null, "client": "B2C", "project": "Calatagan", "description": "- Mechanical Works Retention", "billed": 79100.26, "expected": 79100.26, "pct": 0.004509838001, "action": "not yet billed", "status": "Pending Endorsement", "days": "no date available", "id": "ret-28"}, {"date": null, "client": "PERSAN", "project": "Emilio Jacinto", "description": "- Retention for Fire Pro Augmentation", "billed": 29500.0, "expected": 29500.0, "pct": 0.001681918884, "action": "not yet billed", "status": "Pending Endorsement", "days": "no date available", "id": "ret-29"}, {"date": null, "client": "JEJORS", "project": "MRT3 Phase 1", "description": null, "billed": 250000.0, "expected": 250000.0, "pct": 0.01425354986, "action": "not yet billed", "status": "Pending Endorsement", "days": "no date available", "id": "ret-30"}, {"date": null, "client": "B2C", "project": "NBS", "description": "- Retention Phase 3", "billed": 325000.0, "expected": 325000.0, "pct": 0.01852961482, "action": "not yet billed", "status": "Pending Endorsement", "days": "no date available", "id": "ret-31"}, {"date": null, "client": "KKLC", "project": "NBS - KKLC MEPF", "description": null, "billed": 135271.99, "expected": 135271.99, "pct": 0.007712424218, "action": "not yet billed", "status": "Pending Endorsement", "days": "no date available", "id": "ret-32"}, {"date": null, "client": "CASA EUROPA", "project": "NBS PORCELANOSA", "description": "- Em & Ext Light Pending CO", "billed": 18493.2, "expected": 18493.2, "pct": 0.001054374993, "action": "not yet billed", "status": "Pending Endorsement", "days": "no date available", "id": "ret-33"}, {"date": null, "client": "B2C", "project": "PGH Bone Marrow Transplant", "description": "- Contract Retention", "billed": 1450000.0, "expected": 1450000.0, "pct": 0.08267058921, "action": "not yet billed", "status": "Pending Endorsement", "days": "no date available", "id": "ret-34"}, {"date": null, "client": "RMVG", "project": "PGH Psychiatric (Ward 7)", "description": "- Contract Retention", "billed": 779611.67, "expected": 779611.67, "pct": 0.04444893525, "action": "not yet billed", "status": "Pending Endorsement", "days": "no date available", "id": "ret-35"}, {"date": null, "client": "RMVG", "project": "Vetmate", "description": "- Retention (full contract)", "billed": 948490.25, "expected": 948490.25, "pct": 0.05407741229, "action": "not yet billed", "status": "Pending Endorsement", "days": "no date available", "id": "ret-36"}, {"date": null, "client": "RMVG", "project": "Vetmate", "description": "- CO1 Retention", "billed": 28722.66, "expected": 28722.66, "pct": 0.001637599466, "action": "not yet billed", "status": "Pending Endorsement", "days": "no date available", "id": "ret-37"}, {"date": null, "client": "RMVG", "project": "Vetmate", "description": "- CO2 ME Works Retention (full contract)", "billed": 419066.28, "expected": 419066.28, "pct": 0.02389272847, "action": "not yet billed", "status": "Pending Endorsement", "days": "no date available", "id": "ret-38"}], "pipeline": [{"gencon": "ALPHALAND", "project": "Dismantling of Existing 2Hp Unit and Installation of 3HP Unit", "system": "AC", "amount": 105062.20391000001, "budget": 71545.0, "date": "2026-06-29", "vat": "VAT EXCLUDED", "remarks": null, "status": "Ongoing"}, {"gencon": "ARCH SARAH", "project": "7 LABRADOR", "system": "MEEP", "amount": 9177925.6446275, "budget": 6941558.2761717485, "date": "2026-06-03", "vat": "VAT EXCLUDED", "remarks": null, "status": "Ongoing"}, {"gencon": "ARCH SARAH", "project": "ORT MAINTENANCE COST PROPOSAL", "system": null, "amount": 40000.0, "budget": 40000.0, "date": "2026-04-13", "vat": "VAT EXCLUDED", "remarks": null, "status": "Ongoing"}, {"gencon": "B2C", "project": "UPTON RESIDENCE", "system": "MEEP", "amount": 8750680.997228019, "budget": 5818379.794096029, "date": "2026-07-06", "vat": "VAT EXCLUDED", "remarks": null, "status": "Ongoing"}, {"gencon": "B2C", "project": "NBS QACC STP", "system": "STP", "amount": 3059775.438501446, "budget": 2293293.5005890923, "date": "2026-07-01", "vat": "VAT EXCLUDED", "remarks": null, "status": "Ongoing"}, {"gencon": "B2C", "project": "HEALTHWAY", "system": "MEEPF", "amount": 2671289.3527446627, "budget": 2012516.2785697882, "date": "2026-06-09", "vat": "8% VAT INCLUDED", "remarks": null, "status": "Ongoing"}, {"gencon": "B2C", "project": "NBS QUAD ALPHA", "system": "MEEPF", "amount": 3150006.90975232, "budget": "???", "date": "2026-06-22", "vat": "VAT INCLUDED", "remarks": "resubmitted June 22, 2026\nwith B2C Supplied Materials", "status": "Ongoing"}, {"gencon": "B2C", "project": "SIA RESIDENCE", "system": "EEP", "amount": 11379392.8695888, "budget": 6848599.7419669395, "date": "2026-04-22", "vat": "VAT INCLUDED", "remarks": "this proposal has its own BOQ Format", "status": "Ongoing"}, {"gencon": "B2C", "project": "CASA VERONICA", "system": "MECHANICAL - LG Brand", "amount": 660326.95, "budget": 474302.240625, "date": "2026-03-24", "vat": "VAT EXCLUDED", "remarks": "Vat Ex\nRev Note;\nMulti Split AC Unit to be replaced by Window Type Units\nAll Bedrooms(Main House) : \n- Window Type Aircon to install\nService Areas : Window type Aircon for provision only (unit not to install)\n Lanai/ Covered Balcony FCU for provision only(unit not to install)\nKitchen window type aircon for provision only (unit not to install)\nPower and drain connections for all provisional air conditioning units are excluded.", "status": "Ongoing"}, {"gencon": "B2C", "project": "RRLC", "system": "ME - EE", "amount": 15089397.44202714, "budget": 11158537.223504052, "date": "2026-04-06", "vat": "VAT INCLUDED", "remarks": "with BTM for revision\nsubmitted to Engr Merj", "status": "Ongoing"}, {"gencon": "B2C", "project": "BUENA VIST HOMES STP REHAB", "system": "STP", "amount": 7512780.0, "budget": 5870000.0, "date": "2026-04-13", "vat": "VAT INCLUSIVE", "remarks": null, "status": "Ongoing"}, {"gencon": "B2C", "project": "BLAINE - SFDA ", "system": "MEEPF", "amount": 2989502.2985370685, "budget": 2370855.6208718433, "date": "2026-04-13", "vat": "VAT EXCLUDED", "remarks": "Missing GR Amount inserted to IC/unit rates", "status": "Ongoing"}, {"gencon": "B2C", "project": "6 AMANG RODRIGUEZ", "system": "MEEPF", "amount": 22012665.637657188, "budget": "#ERROR!", "date": "PENDING", "vat": "VAT EXCLUDED", "remarks": "Waiting for BTM direction\nAdded\n  - Summary of Revised Cost\n  - yung ME & PL wala nmn nagbago kaya hindi ko na nilagyan ng side by side\n  - the ung STP, wala BOQ,. same pa rin ba? wala siyang price inscrease? pinula ko e\n\n6_Amang_Cost_Proposal_MEEPF_2026_03_19_VE_without_7F_Final\n  - Side by Side with Dec 12 Cost Proposal\n  - all highlighted in \"Light Orange\" are affected by Price Adjustment\n  - Mechanical & Plumbing - NO Changes", "status": "Ongoing"}, {"gencon": "DRA MAGAT", "project": "THREE STOREY RESIDENCE- SINILOAN", "system": "AC", "amount": 2143130.032105772, "budget": 1641644.5189797936, "date": "2026-06-03", "vat": "VAT EXCLUDED", "remarks": null, "status": "Ongoing"}, {"gencon": "DRA MAGAT", "project": "THREE STOREY RESIDENCE- SINILOAN", "system": "WATER SUPPLY", "amount": 3071784.285, "budget": 1191137.742, "date": "2026-06-03", "vat": "VAT EXCLUDED", "remarks": null, "status": "Ongoing"}, {"gencon": "EMCI", "project": "DAPB / NEDA", "system": "MEEPF", "amount": 353218434.79989564, "budget": 237912928.36603475, "date": "2026-07-17", "vat": "VAT INCLUSIVE", "remarks": null, "status": "Ongoing"}, {"gencon": "FP MORGEN", "project": "SECONDO - GLORIETA II", "system": "MECHANICAL - DUCTING", "amount": 449336.870499698, "budget": 273687.7696532, "date": "2026-07-02", "vat": "VAT EXCLUDED", "remarks": null, "status": "Ongoing"}, {"gencon": "JBROS REALTY DEVELOPMENT CORPORATION", "project": "MAKATI EXECUTIVE SUITE RENOVATION PROJECT", "system": "AC - DAIKIN LITE\n\nAC - DAIKIN QUEEN\n\nAC - LG", "amount": "1,110,817.58\n\n1,259,297.58\n\n1,082,315.18", "budget": "843,204.38\n\n1,054,741.38\n\n821,827.58", "date": "2026-07-13", "vat": "VAT EXCLUDED", "remarks": null, "status": "Ongoing"}, {"gencon": "JEJORS", "project": "PGH CENTRAL BLOCK 2F", "system": "MECHANICAL - AC", "amount": 11074036.18070235, "budget": 8465270.77731561, "date": "2026-07-02", "vat": "VAT EXCLUDED", "remarks": null, "status": "Ongoing"}, {"gencon": "JEJORS", "project": "PGH CBFP", "system": "MEEPF", "amount": 98845867.38085167, "budget": 47807481.614990376, "date": "2026-07-02", "vat": "VAT EXCLUDED", "remarks": "Request update from BTM, latest info is that scope will only be labor. Materials are B2C supplied with Attendance fee for RBDK", "status": "Ongoing"}, {"gencon": "JEJORS", "project": "PGH ADMIN OFFICE", "system": "MECHANICAL", "amount": 22121614.39, "budget": 16789186.462491445, "date": "2026-05-19", "vat": "VAT EXCLUDED", "remarks": "Request update from BTM", "status": "Ongoing"}, {"gencon": "MANG INASAL", "project": "MANG INASAL - UPTOWN", "system": "MECHANICAL - AC & VENT", "amount": 1152870.2514772401, "budget": 925286.0126951209, "date": "2026-07-06", "vat": "VAT EXCLUDED", "remarks": null, "status": "Ongoing"}, {"gencon": "NBS 125 GALLEY", "project": "NBS - 125 GALLERY AND 125 STORAGE", "system": "FDAS", "amount": 20214.746000000003, "budget": 13975.52, "date": "2026-06-15", "vat": "VAT EXCLUDED", "remarks": null, "status": "Ongoing"}, {"gencon": "NBS 125 GALLEY", "project": "NBS - 125 GALLERY AND 125 STORAGE", "system": "WIFI", "amount": 15974.4775, "budget": 10730.919999999998, "date": "2026-06-19", "vat": "VAT EXCLUDED", "remarks": null, "status": "Ongoing"}, {"gencon": "NBS 125 GALLEY", "project": "NBS - 125 GALLERY AND 125 STORAGE", "system": "FDAS", "amount": 261698.0595, "budget": 192788.4246942295, "date": "2026-06-15", "vat": "VAT EXCLUDED", "remarks": null, "status": "Ongoing"}, {"gencon": "PGH", "project": "PGH AC MAINTENANCE", "system": "AC", "amount": 3388034.204999999, "budget": 2159754.5, "date": "2026-04-29", "vat": "VAT EXCLUDED", "remarks": "Request update from BTM", "status": "Ongoing"}, {"gencon": "RMVG", "project": "PGH COLPOSCOPY", "system": "MEEPF", "amount": 1075724.13, "budget": 898589.28, "date": "2026-07-23", "vat": "VAT EXCLUDED", "remarks": null, "status": "Ongoing"}, {"gencon": "RMVG", "project": "UCC FLAGSHIP STORE", "system": "MPF", "amount": 10067085.688176168, "budget": 7967588.3512309585, "date": "2026-07-02", "vat": "INCLUDED", "remarks": null, "status": "Ongoing"}, {"gencon": "RMVG", "project": "TIRONA RESIDENCE", "system": "MEEP", "amount": 5926437.002750001, "budget": 4447786.807555039, "date": "2026-06-23", "vat": "INCLUDED", "remarks": null, "status": "Ongoing"}, {"gencon": "RMVG", "project": "PROPOSED 3- STOREY WITH DECK BUILDING/RESIDENCE (MADOKAY)", "system": "EEPF", "amount": 8107976.57185789, "budget": 5988734.766275407, "date": "2026-04-11", "vat": "Excluded", "remarks": "Revised by Berns (GR, OSM, Metal Conduits to PVC)", "status": "Ongoing"}, {"gencon": "SIR KIKO", "project": "  - OPTION 1 - D SMART LITE", "system": null, "amount": 77771.56156249999, "budget": 59346.625, "date": "2026-04-24", "vat": "VAT EXCLUDED", "remarks": null, "status": "Ongoing"}, {"gencon": "SIR KIKO", "project": "  - OPTION 2 - D SMART QUEEN", "system": null, "amount": 89531.56156249999, "budget": 76669.625, "date": "2026-04-24", "vat": "VAT EXCLUDED", "remarks": null, "status": "Ongoing"}, {"gencon": "SPENCER", "project": "CALASIAO PANGASINAN ", "system": "AC - DAIKIN\n\nAC - LG", "amount": "568,546.38  \n\n580,047.18", "budget": "409,583.78\n\n437,453.19", "date": "2026-07-23", "vat": "VAT EXCLUDED", "remarks": null, "status": "Ongoing"}, {"gencon": "SPENCER", "project": "PROPOSED MARMICO DIALYSIS INTERIOR RENOVATION", "system": "AC", "amount": 1499283.36009, "budget": 1130315.130190476, "date": "2026-07-08", "vat": "VAT EXCLUDED", "remarks": null, "status": "Ongoing"}], "top5Payables": [{"date": "2026-08-22", "project": "PGH RCB", "description": "PGH RCB MP-ME-001 (Daikin) PDC", "amount": 3595997.59, "pct": 0.507331866, "action": "PDC"}, {"date": "2026-08-27", "project": "Alitagtag 2", "description": "Alitagtag MP-ME-031", "amount": 268870, "pct": 0.03793281708, "action": "PDC"}, {"date": "2026-08-28", "project": "MISCELLANEOUS", "description": "SP SIR JEF MP-019", "amount": 156375, "pct": 0.02206175576, "action": "PDC"}, {"date": "2026-07-17", "project": "MANPOWER OVERHEAD", "description": "For 13th Month Pay Every Cutoff ", "amount": 109157.94, "pct": 0.01540026099, "action": "Mandatories"}, {"date": "2026-07-24", "project": "MANPOWER OVERHEAD", "description": "For 13th Month Pay Every Cutoff ", "amount": 109157.94, "pct": 0.01540026099, "action": "Mandatories"}], "top5Receivables": [{"date": "2026-07-01", "project": "PGH RCB - - B1", "client": "JEJORS", "amount": 12007567.85, "pct": 0.5850785641, "action": "Bill sent but needs to be revised; need to determine which portion will go to RBDK"}, {"date": "2026-02-16", "project": "PGH Psychiatric (Ward 7) - - B5 (Contract B4)", "client": "RMVG", "amount": 1495920.89, "pct": 0.07288996883, "action": "sum of all outstanding billings"}, {"date": "2024-08-08", "project": "BATASAN / CONGRESS - - CO1 B1", "client": "B2C", "amount": 880170.8, "pct": 0.04288704209, "action": "Following up with B2C but Sir Vas needs to recon with Excell"}, {"date": "2026-07-07", "project": "NBS QACC RENOVATION - - 30%DP", "client": "B2C", "amount": 810000, "pct": 0.03946791247, "action": "B2C Finalizing NTP - Request for DP already submitted"}, {"date": "2026-07-14", "project": "GLICERIA - - B5", "client": "B2C", "amount": 519148.84, "pct": 0.02529595182, "action": "Billed with full endorsement to B2C"}], "top5Retention": [{"date": "2026-05-12", "project": "NBS - - Retention Phase 2", "client": "B2C", "amount": 2160000, "pct": 0.1231506708, "action": "not yet billed"}, {"date": "2026-05-20", "project": "VETMATE - - Retention", "client": "RMVG", "amount": 1723381.5, "pct": 0.09825721658, "action": "not yet billed"}, {"date": null, "project": "Blaine - - Contract Retention", "client": "B2C", "amount": 1560000, "pct": 0.08894215115, "action": "not yet billed"}, {"date": null, "project": "PGH Bone Marrow Transplant - - Contract Retention", "client": "B2C", "amount": 1450000, "pct": 0.08267058921, "action": "not yet billed"}, {"date": "2026-05-12", "project": "Aboitiz - - Retention (Excluding Pending CO)", "client": "B2C", "amount": 1145794.74, "pct": 0.06532656984, "action": "not yet billed"}], "sentBilling": [{"project": "Banaue", "status": "Pending Collection", "update": "Billed with full endorsement to B2C", "action_today": null, "pic": null, "details": "B2C - - B9 - 100%", "amount": 82741.5, "date_billed": "2026-02-17", "days": "156 days", "id": "sb-0"}, {"project": "BATASAN / CONGRESS", "status": "Pending Collection", "update": "Following up with B2C but Sir Vas needs to recon with Excell", "action_today": null, "pic": null, "details": "B2C - - CO1 B1", "amount": 977967.55, "date_billed": "2024-08-08", "days": "714 days", "id": "sb-1"}, {"project": "GLICERIA", "status": "Pending Collection", "update": "Billed with full endorsement to B2C", "action_today": null, "pic": null, "details": "B2C - - B5", "amount": 692198.45, "date_billed": "2026-07-14", "days": "9 days", "id": "sb-2"}, {"project": "NBS QACC RENOVATION", "status": "Pending Collection", "update": "B2C Finalizing NTP - Request for DP already submitted", "action_today": null, "pic": null, "details": "B2C - - 30%DP", "amount": 810000, "date_billed": "2026-07-07", "days": "16 days", "id": "sb-3"}, {"project": "NLC", "status": "Collected", "update": "considered paid and charged to 1m", "action_today": null, "pic": null, "details": "S'JEFF - - B2 - 100%", "amount": 65000, "date_billed": "2026-01-31", "days": "173 days", "id": "sb-4"}, {"project": "PGH Bone Marrow Transplant", "status": "Pending Collection", "update": "partial was released", "action_today": null, "pic": null, "details": "B2C - - B9 (CO3 EOT, UPS, Water Fltr, RO Deduct B1)", "amount": 333713.02, "date_billed": "2026-06-17", "days": "36 days", "id": "sb-5"}, {"project": "PGH Psychiatric (Ward 7)", "status": "Pending Collection", "update": "sum of all outstanding billings", "action_today": null, "pic": null, "details": "RMVG - - B5 (Contract B4)", "amount": 1508194.01, "date_billed": "2026-02-16", "days": "157 days", "id": "sb-6"}, {"project": "PGH Psychiatric (Ward 7)", "status": "Pending Collection", "update": null, "action_today": null, "pic": null, "details": "RMVG - - B6 (Contract B5)", "amount": 1328605.92, "date_billed": "2026-03-19", "days": "126 days", "id": "sb-7"}, {"project": "PGH Psychiatric (Ward 7)", "status": "Pending Collection", "update": null, "action_today": null, "pic": null, "details": "RMVG - - B7 (CO2 B1)", "amount": 48712.15, "date_billed": "2026-06-26", "days": "27 days", "id": "sb-8"}, {"project": "PGH RCB", "status": "Pending Collection", "update": "Bill sent but needs to be revised; need to determine which portion will go to RBDK", "action_today": null, "pic": null, "details": "JEJORS - - B1", "amount": 12007567.85, "date_billed": "2026-07-01", "days": "22 days", "id": "sb-9"}, {"project": "Vetmate", "status": "Pending Collection", "update": "Billed but not yet released", "action_today": null, "pic": null, "details": "RMVG - - PB11 (Contract B8, CO2 B5)", "amount": 2141404.88, "date_billed": "2025-03-26", "days": "484 days", "id": "sb-10"}, {"project": "Vigan 02", "status": "Pending Collection", "update": "Charge to Jasper Viloria", "action_today": null, "pic": null, "details": "ATTY PIEG - - B1", "amount": 188294.64, "date_billed": null, "days": "no date available", "id": "sb-11"}, {"project": "Ricos Caf\u00e9", "status": "Pending Collection", "update": "balance to technocycle", "action_today": null, "pic": null, "details": "MANA - - Retention (yung balance kay techno na rin ito mapupunta)", "amount": 1723381.5, "date_billed": "2024-11-27", "days": "603 days", "id": "sb-12"}, {"project": "NBS PORCELANOSA", "status": "Pending Collection", "update": "partial release", "action_today": null, "pic": null, "details": "CASA EUROPA - - EL-PL RETENTION REQUEST", "amount": 202148.6, "date_billed": "2025-11-17", "days": "248 days", "id": "sb-13"}, {"project": "Banaue", "status": "Pending Collection", "update": "upon sale of property", "action_today": null, "pic": null, "details": "B2C - - Retention", "amount": 505466.89, "date_billed": "2026-02-17", "days": "156 days", "id": "sb-14"}, {"project": "217 Acacia", "status": "Pending Collection", "update": "billed but waiting for 100% billing before release", "action_today": null, "pic": null, "details": "B2C - - Retention", "amount": 615507.77, "date_billed": "2026-05-12", "days": "72 days", "id": "sb-15"}, {"project": "NBS", "status": "Pending Collection", "update": "Billed to B2C", "action_today": null, "pic": null, "details": "B2C - - Retention Phase 1", "amount": 1108000, "date_billed": "2026-05-12", "days": "72 days", "id": "sb-16"}], "pendingWorks": [{"project": "217 ACACIA", "status": "Pending Endorsement", "update": "needs full endorsement", "details": "B2C - - B13 - 100%", "amount": 200855.45, "id": "pw-0"}, {"project": "Abra Special Project Phase 1", "status": "For Billing", "update": "Outstanding balance to be billed", "details": "ATTY PIEG - - B1", "amount": 868745.32, "id": "pw-1"}, {"project": "Abra Special Project Phase 2", "status": "For Billing", "update": "to be added to Gliceria", "details": "ATTY PIEG - - B1", "amount": 152444.2, "id": "pw-2"}, {"project": "ASLDP", "status": "Pending Endorsement", "update": "needs full endorsement", "details": "RMVG - - B4 (CO2B1)", "amount": 48210.61, "id": "pw-3"}, {"project": "Badoc", "status": "Pending Endorsement", "update": "needs full endorsement", "details": "B2C - - Progress Billing No. 10 (CO3 B1)", "amount": 229953, "id": "pw-4"}, {"project": "Badoc", "status": "Pending Endorsement", "update": "needs full endorsement", "details": "B2C - - Progress Billing No. 11 (CO3B1, CO4B1)", "amount": 110764.8, "id": "pw-5"}, {"project": "Calatagan CP-02 (direct with Owner)", "status": "Pending Endorsement", "update": "needs full endorsement", "details": "B2C - - Billing no. 12 (CO5 B1)", "amount": 18813.4, "id": "pw-6"}, {"project": "Cerilo", "status": "Pending Endorsement", "update": "needs full endorsement", "details": "S'MARK - - B1 - 100%", "amount": 58500, "id": "pw-7"}, {"project": "Chuahiok", "status": "Pending Endorsement", "update": "needs full endorsement", "details": "Chuahiok - - No record of Billing no.", "amount": 53750, "id": "pw-8"}, {"project": "MRT 3 Phase 1", "status": "Pending Endorsement", "update": "For update", "details": "JEJORS - - B3", "amount": 412239.94, "id": "pw-9"}, {"project": "MRT 3 Phase 1", "status": "Pending Endorsement", "update": "For update", "details": "JEJORS - - B4", "amount": 592983.09, "id": "pw-10"}, {"project": "NBS", "status": "Pending Endorsement", "update": "needs full endorsement", "details": "B2C - - Phase 2 B8 - 100% Final Billing", "amount": 287545.86, "id": "pw-11"}, {"project": "NBS", "status": "Pending Endorsement", "update": "needs full endorsement", "details": "B2C - - Phase 6 Billing no. 01", "amount": 326761.55, "id": "pw-12"}, {"project": "NBS - ASTRO", "status": "Pending Endorsement", "update": "needs full endorsement", "details": "ASTRO - - B3", "amount": 350024.75, "id": "pw-13"}, {"project": "NBS - GADJAH", "status": "Pending Endorsement", "update": "needs full endorsement", "details": "GADJAH - - WATER METER B1", "amount": 9775.92, "id": "pw-14"}, {"project": "NBS - GADJAH", "status": "Pending Endorsement", "update": "needs full endorsement", "details": "GADJAH - - FIBER OPTIC", "amount": 12360.32, "id": "pw-15"}, {"project": "NBS - PLUCK (TENANT K)", "status": "Pending Endorsement", "update": "needs full endorsement", "details": "PLUCK - - FIRE PRO B1", "amount": 123543.48, "id": "pw-16"}, {"project": "NBS - Porcelanosa", "status": "Pending Endorsement", "update": "needs full endorsement", "details": "CASA EUROPA - - ADDL AC, EMERGENCY & EXIT LIGHT - 30%DP", "amount": 184931.98, "id": "pw-17"}, {"project": "NBS - Type A & Roaster", "status": "Pending Endorsement", "update": "needs full endorsement", "details": "ARCH SARAH - - Additional AC Works B1", "amount": 265311.29, "id": "pw-18"}, {"project": "NBS - Type A & Roaster", "status": "Pending Endorsement", "update": "needs full endorsement", "details": "ARCH SARAH - - Additional AC Works B2", "amount": 33117.7, "id": "pw-19"}, {"project": "NBS QACC STP", "status": "Pending Endorsement", "update": "needs full endorsement", "details": "B2C - - B1", "amount": 828847.57, "id": "pw-20"}, {"project": "RRLC", "status": "Pending Endorsement", "update": "For update", "details": "M'NEMA - - M'Nema's Existing Bldg for Design to Upgrade Mechanical", "amount": 40000, "id": "pw-21"}, {"project": "Sir Jeff AC Replacement", "status": "Pending Endorsement", "update": "For update", "details": "Sir Jeff - - Billing no. 01", "amount": 69060, "id": "pw-22"}, {"project": "UPTON RESIDENCES", "status": "Pending Endorsement", "update": "For update", "details": "ARCH SARA - - B1", "amount": 125440, "id": "pw-23"}, {"project": "Batasan / Congress", "status": "Pending Endorsement", "update": "billed but only partially released", "details": "B2C - - Retention", "amount": 441505.41, "id": "pw-24"}, {"project": "PGH ULTRASOUND", "status": "Pending Endorsement", "update": "not yet billed", "details": "RMVG - - Retention", "amount": 293285.4, "id": "pw-25"}, {"project": "Calatagan CP-01", "status": "Pending Endorsement", "update": "not yet billed", "details": "B2C - - Retention", "amount": 176444.96, "id": "pw-26"}, {"project": "9LEO", "status": "Pending Endorsement", "update": "not yet billed", "details": "B2C - - Retention from B2C", "amount": 372971.56, "id": "pw-27"}, {"project": "9LEO", "status": "Pending Endorsement", "update": "not yet billed", "details": "OWNER - - Retention direct from Owner", "amount": 87895.29, "id": "pw-28"}, {"project": "Aboitiz", "status": "Pending Endorsement", "update": "not yet billed", "details": "B2C - - Retention (Excluding Pending CO)", "amount": 1145794.74, "id": "pw-29"}, {"project": "Badoc", "status": "Pending Endorsement", "update": "not yet billed", "details": "B2C - - ME Works Retention", "amount": 125000, "id": "pw-30"}, {"project": "NBS", "status": "Pending Endorsement", "update": "not yet billed", "details": "B2C - - Retention Phase 2", "amount": 2160000, "id": "pw-31"}, {"project": "NBS PORCELANOSA", "status": "Pending Endorsement", "update": "not yet billed", "details": "CASA EUROPA - - AddL AC (Base onRev.03 EE Plan)", "amount": 70000, "id": "pw-32"}, {"project": "VETMATE", "status": "Pending Endorsement", "update": "not yet billed", "details": "RMVG - - Retention", "amount": 1723381.5, "id": "pw-33"}, {"project": "7 Radish - non vat", "status": "Pending Endorsement", "update": "not yet billed", "details": "B2C - - Contract Retention", "amount": 326739.3, "id": "pw-34"}, {"project": "7 Radish - non vat", "status": "Pending Endorsement", "update": "not yet billed", "details": "B2C - - CO1 Retetion", "amount": 6000, "id": "pw-35"}, {"project": "7 Radish - non vat", "status": "Pending Endorsement", "update": "not yet billed", "details": "B2C - - CO2 Retetion", "amount": 16428.63, "id": "pw-36"}, {"project": "7 Radish - non vat", "status": "Pending Endorsement", "update": "not yet billed", "details": "B2C - - CO3 Retetion", "amount": 15500, "id": "pw-37"}, {"project": "Badoc", "status": "Pending Endorsement", "update": "not yet billed", "details": "B2C - - Contract Retention", "amount": 284864.68, "id": "pw-38"}, {"project": "Badoc", "status": "Pending Endorsement", "update": "not yet billed", "details": "B2C - - CO1 retention", "amount": 4607.48, "id": "pw-39"}, {"project": "Badoc", "status": "Pending Endorsement", "update": "not yet billed", "details": "B2C - - CO2 retention", "amount": 22995.3, "id": "pw-40"}, {"project": "Badoc", "status": "Pending Endorsement", "update": "not yet billed", "details": "B2C - - Various Addl Works (Pending CO) retention", "amount": 9702.28, "id": "pw-41"}, {"project": "Badoc", "status": "Pending Endorsement", "update": "not yet billed", "details": "B2C - - EOT (Pending CO) retention", "amount": 21500, "id": "pw-42"}, {"project": "Blaine", "status": "Pending Endorsement", "update": "not yet billed", "details": "B2C - - Contract Retention", "amount": 19, "id": "pw-43"}, {"project": "Blaine", "status": "Pending Endorsement", "update": "not yet billed", "details": "B2C - - Contract Retention", "amount": 1560000, "id": "pw-44"}, {"project": "Blaine", "status": "Pending Endorsement", "update": "not yet billed", "details": "B2C - - CO2 Retention", "amount": 844100, "id": "pw-45"}, {"project": "Calatagan", "status": "Pending Endorsement", "update": "not yet billed", "details": "B2C - - CP-02 Retention", "amount": 329064.6, "id": "pw-46"}, {"project": "Calatagan", "status": "Pending Endorsement", "update": "not yet billed", "details": "B2C - - Mechanical Works Retention", "amount": 79100.26, "id": "pw-47"}, {"project": "Emilio Jacinto", "status": "Pending Endorsement", "update": "not yet billed", "details": "PERSAN - - Retention for Fire Pro Augmentation", "amount": 29500, "id": "pw-48"}, {"project": "MRT3 Phase 1", "status": "Pending Endorsement", "update": "not yet billed", "details": "JEJORS - ", "amount": 250000, "id": "pw-49"}, {"project": "NBS", "status": "Pending Endorsement", "update": "not yet billed", "details": "B2C - - Retention Phase 3", "amount": 325000, "id": "pw-50"}, {"project": "NBS - KKLC MEPF", "status": "Pending Endorsement", "update": "not yet billed", "details": "KKLC - ", "amount": 135271.99, "id": "pw-51"}, {"project": "NBS PORCELANOSA", "status": "Pending Endorsement", "update": "not yet billed", "details": "CASA EUROPA - - Em & Ext Light Pending CO", "amount": 18493.2, "id": "pw-52"}, {"project": "PGH Bone Marrow Transplant", "status": "Pending Endorsement", "update": "not yet billed", "details": "B2C - - Contract Retention", "amount": 1450000, "id": "pw-53"}, {"project": "PGH Psychiatric (Ward 7)", "status": "Pending Endorsement", "update": "not yet billed", "details": "RMVG - - Contract Retention", "amount": 779611.67, "id": "pw-54"}, {"project": "Vetmate", "status": "Pending Endorsement", "update": "not yet billed", "details": "RMVG - - Retention (full contract)", "amount": 948490.25, "id": "pw-55"}, {"project": "Vetmate", "status": "Pending Endorsement", "update": "not yet billed", "details": "RMVG - - CO1 Retention", "amount": 28722.66, "id": "pw-56"}, {"project": "Vetmate", "status": "Pending Endorsement", "update": "not yet billed", "details": "RMVG - - CO2 ME Works Retention (full contract)", "amount": 419066.28, "id": "pw-57"}], "leadsPipeline": [{"project": "ALPHALAND - Dismantling of Existing 2Hp Unit and Installation of 3HP Unit", "status": "Ongoing", "update": null, "system": "AC", "amount": 105062.2039, "id": "lead-0"}, {"project": "ARCH SARAH - 7 LABRADOR", "status": "Ongoing", "update": null, "system": "MEEP", "amount": 9177925.645, "id": "lead-1"}, {"project": "ARCH SARAH - ORT MAINTENANCE COST PROPOSAL", "status": "Ongoing", "update": null, "system": null, "amount": 40000, "id": "lead-2"}, {"project": "B2C - UPTON RESIDENCE", "status": "Ongoing", "update": null, "system": "MEEP", "amount": 8750680.997, "id": "lead-3"}, {"project": "B2C - NBS QACC STP", "status": "Ongoing", "update": null, "system": "STP", "amount": 3059775.439, "id": "lead-4"}, {"project": "B2C - HEALTHWAY", "status": "Ongoing", "update": null, "system": "MEEPF", "amount": 2671289.353, "id": "lead-5"}, {"project": "B2C - NBS QUAD ALPHA", "status": "Ongoing", "update": "resubmitted June 22, 2026\nwith B2C Supplied Materials", "system": "MEEPF", "amount": 3150006.91, "id": "lead-6"}, {"project": "B2C - SIA RESIDENCE", "status": "Ongoing", "update": "this proposal has its own BOQ Format", "system": "EEP", "amount": 11379392.87, "id": "lead-7"}, {"project": "B2C - CASA VERONICA", "status": "Ongoing", "update": "Vat Ex\nRev Note;\nMulti Split AC Unit to be replaced by Window Type Units\nAll Bedrooms(Main House) : \n- Window Type Aircon to install\nService Areas : Window type Aircon for provision only (unit not to install)\n Lanai/ Covered Balcony FCU for provision only(unit not to install)\nKitchen window type aircon for provision only (unit not to install)\nPower and drain connections for all provisional air conditioning units are excluded.", "system": "MECHANICAL - LG Brand", "amount": 660326.95, "id": "lead-8"}, {"project": "B2C - RRLC", "status": "Ongoing", "update": "with BTM for revision\nsubmitted to Engr Merj", "system": "ME - EE", "amount": 15089397.44, "id": "lead-9"}, {"project": "B2C - BUENA VIST HOMES STP REHAB", "status": "Ongoing", "update": null, "system": "STP", "amount": 7512780, "id": "lead-10"}, {"project": "B2C - BLAINE - SFDA ", "status": "Ongoing", "update": "Missing GR Amount inserted to IC/unit rates", "system": "MEEPF", "amount": 2989502.299, "id": "lead-11"}, {"project": "B2C - 6 AMANG RODRIGUEZ", "status": "Ongoing", "update": "Waiting for BTM direction\nAdded\n  - Summary of Revised Cost\n  - yung ME & PL wala nmn nagbago kaya hindi ko na nilagyan ng side by side\n  - the ung STP, wala BOQ,. same pa rin ba? wala siyang price inscrease? pinula ko e\n\n6_Amang_Cost_Proposal_MEEPF_2026_03_19_VE_without_7F_Final\n  - Side by Side with Dec 12 Cost Proposal\n  - all highlighted in \"Light Orange\" are affected by Price Adjustment\n  - Mechanical & Plumbing - NO Changes", "system": "MEEPF", "amount": 22012665.64, "id": "lead-12"}, {"project": "DRA MAGAT - THREE STOREY RESIDENCE- SINILOAN", "status": "Ongoing", "update": null, "system": "AC", "amount": 2143130.032, "id": "lead-13"}, {"project": "DRA MAGAT - THREE STOREY RESIDENCE- SINILOAN", "status": "Ongoing", "update": null, "system": "WATER SUPPLY", "amount": 3071784.285, "id": "lead-14"}, {"project": "EMCI - DAPB / NEDA", "status": "Ongoing", "update": null, "system": "MEEPF", "amount": 353218434.8, "id": "lead-15"}, {"project": "FP MORGEN - SECONDO - GLORIETA II", "status": "Ongoing", "update": null, "system": "MECHANICAL - DUCTING", "amount": 449336.8705, "id": "lead-16"}, {"project": "JBROS REALTY DEVELOPMENT CORPORATION - MAKATI EXECUTIVE SUITE RENOVATION PROJECT", "status": "Ongoing", "update": null, "system": "AC - DAIKIN LITE\n\nAC - DAIKIN QUEEN\n\nAC - LG", "amount": "1,110,817.58\n\n1,259,297.58\n\n1,082,315.18", "id": "lead-17"}, {"project": "JEJORS - PGH CENTRAL BLOCK 2F", "status": "Ongoing", "update": null, "system": "MECHANICAL - AC", "amount": 11074036.18, "id": "lead-18"}, {"project": "JEJORS - PGH CBFP", "status": "Ongoing", "update": "Request update from BTM, latest info is that scope will only be labor. Materials are B2C supplied with Attendance fee for RBDK", "system": "MEEPF", "amount": 98845867.38, "id": "lead-19"}, {"project": "JEJORS - PGH ADMIN OFFICE", "status": "Ongoing", "update": "Request update from BTM", "system": "MECHANICAL", "amount": 22121614.39, "id": "lead-20"}, {"project": "MANG INASAL - MANG INASAL - UPTOWN", "status": "Ongoing", "update": null, "system": "MECHANICAL - AC & VENT", "amount": 1152870.251, "id": "lead-21"}, {"project": "NBS 125 GALLEY - NBS - 125 GALLERY AND 125 STORAGE", "status": "Ongoing", "update": null, "system": "FDAS", "amount": 20214.746, "id": "lead-22"}, {"project": "NBS 125 GALLEY - NBS - 125 GALLERY AND 125 STORAGE", "status": "Ongoing", "update": null, "system": "WIFI", "amount": 15974.4775, "id": "lead-23"}, {"project": "NBS 125 GALLEY - NBS - 125 GALLERY AND 125 STORAGE", "status": "Ongoing", "update": null, "system": "FDAS", "amount": 261698.0595, "id": "lead-24"}, {"project": "PGH - PGH AC MAINTENANCE", "status": "Ongoing", "update": "Request update from BTM", "system": "AC", "amount": 3388034.205, "id": "lead-25"}, {"project": "RMVG - PGH COLPOSCOPY", "status": "Ongoing", "update": null, "system": "MEEPF", "amount": 1075724.13, "id": "lead-26"}, {"project": "RMVG - UCC FLAGSHIP STORE", "status": "Ongoing", "update": null, "system": "MPF", "amount": 10067085.69, "id": "lead-27"}, {"project": "RMVG - TIRONA RESIDENCE", "status": "Ongoing", "update": null, "system": "MEEP", "amount": 5926437.003, "id": "lead-28"}, {"project": "RMVG - PROPOSED 3- STOREY WITH DECK BUILDING/RESIDENCE (MADOKAY)", "status": "Ongoing", "update": "Revised by Berns (GR, OSM, Metal Conduits to PVC)", "system": "EEPF", "amount": 8107976.572, "id": "lead-29"}, {"project": "SIR KIKO -   - OPTION 1 - D SMART LITE", "status": "Ongoing", "update": null, "system": null, "amount": 77771.56156, "id": "lead-30"}, {"project": "SIR KIKO -   - OPTION 2 - D SMART QUEEN", "status": "Ongoing", "update": null, "system": null, "amount": 89531.56156, "id": "lead-31"}, {"project": "SPENCER - CALASIAO PANGASINAN ", "status": "Ongoing", "update": null, "system": "AC - DAIKIN\n\nAC - LG", "amount": "568,546.38  \n\n580,047.18", "id": "lead-32"}, {"project": "SPENCER - PROPOSED MARMICO DIALYSIS INTERIOR RENOVATION", "status": "Ongoing", "update": null, "system": "AC", "amount": 1499283.36, "id": "lead-33"}], "todaysVictories": []};
+
+// ---------- helpers ----------
+const fmt = n => {
+  if (n === null || n === undefined || n === '' ) return '—';
+  if (typeof n !== 'number') return n;
+  return '₱' + n.toLocaleString('en-US', {maximumFractionDigits: 0});
+};
+const fmtPct = p => (p===null||p===undefined||typeof p!=='number') ? '—' : (p*100).toFixed(1)+'%';
+const fmtDate = d => {
+  if(!d) return '—';
+  const dt = new Date(d);
+  if (isNaN(dt)) return d;
+  return dt.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});
+};
+const esc = s => (s===null||s===undefined) ? '' : String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function daysNum(d){
+  if(!d || typeof d !== 'string') return null;
+  const m = d.match(/(\d+)/);
+  return m ? parseInt(m[1]) : null;
+}
+function daysClass(d){
+  const n = daysNum(d);
+  if(n===null) return '';
+  if(n>180) return 'days-high';
+  if(n>60) return 'days-mid';
+  return 'days-low';
+}
+function statusBadge(s){
+  if(!s) return '<span class="badge default">—</span>';
+  const key = s.toLowerCase().replace(/[^a-z]+/g,'-').replace(/^-|-$/g,'');
+  return `<span class="badge ${key}">${esc(s)}</span>`;
+}
+
+// ---------- generic sortable/searchable table builder ----------
+function renderTable(tableEl, columns, rows, opts={}) {
+  let sortCol = opts.defaultSort ?? null;
+  let sortDir = -1;
+  let currentRows = rows;
+
+  function computeTotal(col){
+    if(!col.sumField) return null;
+    return currentRows.reduce((a,r)=> a + (typeof r[col.sumField]==='number'? r[col.sumField]:0), 0);
+  }
+
+  function draw(){
+    const thead = `<thead><tr>${columns.map((c,i)=>
+      `<th class="${c.num?'num':''}" data-i="${i}">${c.label}${sortCol===i?`<span class="arrow">${sortDir===1?'▲':'▼'}</span>`:''}</th>`
+    ).join('')}</tr></thead>`;
+
+    const body = currentRows.map(r => {
+      return '<tr>' + columns.map(c => {
+        const v = c.render ? c.render(r) : r[c.field];
+        const cls = [c.num?'num':'', c.amount?'amount':'', c.desc?'desc-cell':''].filter(Boolean).join(' ');
+        return `<td class="${cls}">${v}</td>`;
+      }).join('') + '</tr>';
+    }).join('');
+
+    let foot = '';
+    if(opts.showTotals){
+      foot = '<tfoot><tr>' + columns.map(c=>{
+        if(c.totalLabel) return `<td>${c.totalLabel}</td>`;
+        if(c.sumField) return `<td class="num">${fmt(computeTotal(c))}</td>`;
+        return '<td></td>';
+      }).join('') + '</tr></tfoot>';
+    }
+
+    const emptyMsg = opts.emptyMessage || 'No results';
+    tableEl.innerHTML = thead + '<tbody>' + (body || `<tr><td colspan="${columns.length}" style="color:var(--muted);text-align:center;padding:24px;">${esc(emptyMsg)}</td></tr>`) + '</tbody>' + foot;
+
+    tableEl.querySelectorAll('thead th').forEach(th=>{
+      th.addEventListener('click', ()=>{
+        const i = parseInt(th.dataset.i);
+        if(sortCol===i){ sortDir *= -1; } else { sortCol = i; sortDir = 1; }
+        const col = columns[i];
+        currentRows = [...currentRows].sort((a,b)=>{
+          let va = col.sortField ? a[col.sortField] : a[col.field];
+          let vb = col.sortField ? b[col.sortField] : b[col.field];
+          if(typeof va === 'string') va = va.toLowerCase();
+          if(typeof vb === 'string') vb = vb.toLowerCase();
+          if(va===null||va===undefined) va = '';
+          if(vb===null||vb===undefined) vb = '';
+          if(va<vb) return -1*sortDir;
+          if(va>vb) return 1*sortDir;
+          return 0;
+        });
+        draw();
+      });
+    });
+  }
+
+  if(opts.onEdit){
+    tableEl.addEventListener('change', (e)=>{
+      const el = e.target;
+      if(el && el.dataset && el.dataset.editId){
+        if(el.tagName === 'SELECT'){ el.setAttribute('data-current', el.value); }
+        opts.onEdit(el.dataset.editId, el.dataset.editField, el.value, el);
+      }
+    });
+  }
+
+  draw();
+  return {
+    setRows(newRows){ currentRows = newRows; draw(); },
+    getCount(){ return currentRows.length; },
+    refresh(){ draw(); } // re-render with the same row objects, without changing which rows are shown
+  };
+}
+
+// ---------- OVERVIEW: KPIs ----------
+const calc = DATA.calc;
+document.getElementById('reportDate').textContent = fmtDate(DATA.reportDate);
+
+const kpiDefs = [
+  {label:'Total Receivables', value: calc['Total Receivables'], cls:'receivables'},
+  {label:'Total Payables', value: calc['Total Payables'], cls:'payables'},
+  {label:'Receivables less Payables', value: calc['Net Cash Position'], cls:'net'},
+];
+document.getElementById('kpiGrid').innerHTML = kpiDefs.map(k=>`
+  <div class="kpi ${k.cls}">
+    <div class="label">${k.label}</div>
+    <div class="value">${fmt(k.value)}</div>
+    <div class="bar"><span></span></div>
+  </div>
+`).join('');
+
+// ---------- TABS ----------
+document.querySelectorAll('#tabs button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#tabs button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tabpanel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ---------- CLOUD SYNC (optional — Supabase backend) ----------
+// Entirely optional and off by default. If not configured, nothing below ever
+// runs a network call — same defense-in-depth lesson as the charts: an external
+// dependency must never be able to break core functionality.
+const CLOUD_KEY = 'rbdk-supabase-config-v1';
+function loadCloudConfig(){
+  try { return JSON.parse(localStorage.getItem(CLOUD_KEY)) || {url:'', anonKey:''}; }
+  catch(e){ return {url:'', anonKey:''}; }
+}
+function saveCloudConfig(cfg){ try{ localStorage.setItem(CLOUD_KEY, JSON.stringify(cfg)); }catch(e){} }
+let cloudConfig = loadCloudConfig();
+function cloudConfigured(){ return !!cloudConfig.url && !!cloudConfig.anonKey; }
+function sbHeaders(extra){
+  return Object.assign({
+    apikey: cloudConfig.anonKey,
+    Authorization: 'Bearer ' + cloudConfig.anonKey,
+    'Content-Type': 'application/json',
+  }, extra||{});
+}
+function sbUrl(path){ return cloudConfig.url.replace(/\/$/,'') + '/rest/v1/' + path; }
+
+function setSyncStatus(kind, msg){
+  const el = document.getElementById('syncStatusText');
+  const syncBtn = document.getElementById('btn-sync-now');
+  if(!el) return;
+  el.textContent = '☁ ' + msg;
+  el.style.color = kind==='error' ? 'var(--red)' : kind==='ok' ? 'var(--green)' : 'var(--muted)';
+  if(syncBtn) syncBtn.style.display = cloudConfigured() ? 'inline' : 'none';
+}
+
+async function cloudPull(){
+  if(!cloudConfigured()) return null;
+  try{
+    const [editsRes, victRes] = await Promise.all([
+      fetch(sbUrl('dashboard_edits?select=type,record_id,field,value'), {headers: sbHeaders()}),
+      fetch(sbUrl('dashboard_victories?select=*&order=created_at.desc'), {headers: sbHeaders()}),
+    ]);
+    if(!editsRes.ok || !victRes.ok) throw new Error('Supabase request failed (' + editsRes.status + '/' + victRes.status + ')');
+    const editRows = await editsRes.json();
+    const victRows = await victRes.json();
+    const edits = {};
+    editRows.forEach(r=>{
+      if(!edits[r.type]) edits[r.type] = {};
+      if(!edits[r.type][r.record_id]) edits[r.type][r.record_id] = {};
+      edits[r.type][r.record_id][r.field] = r.value;
+    });
+    const victories = victRows.map(r=>({
+      id: r.id, project: r.project,
+      amount: r.amount===null||r.amount===undefined ? null : Number(r.amount),
+      details: r.details, remarks: r.remarks, _manualOrAuto: true,
+    }));
+    return {ok:true, edits, victories};
+  } catch(err){
+    console.error('Cloud pull failed:', err);
+    setSyncStatus('error', 'Could not reach Supabase — showing local data only.');
+    return null;
+  }
+}
+async function cloudPushEdit(type, id, field, value){
+  if(!cloudConfigured()) return;
+  try{
+    const res = await fetch(sbUrl('dashboard_edits'), {
+      method: 'POST',
+      headers: sbHeaders({Prefer: 'resolution=merge-duplicates,return=minimal'}),
+      body: JSON.stringify([{type, record_id:id, field, value: value===null?null:String(value), updated_at: new Date().toISOString()}]),
+    });
+    if(!res.ok) throw new Error('Supabase write failed (' + res.status + ')');
+    setSyncStatus('ok', 'Synced ' + new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}));
+  } catch(err){
+    console.error('Cloud push (edit) failed:', err);
+    setSyncStatus('error', 'Saved locally only — could not reach Supabase.');
+  }
+}
+async function cloudPushVictory(entry){
+  if(!cloudConfigured()) return;
+  try{
+    const res = await fetch(sbUrl('dashboard_victories'), {
+      method: 'POST',
+      headers: sbHeaders({Prefer: 'return=minimal'}),
+      body: JSON.stringify([{id:entry.id, project:entry.project, amount:entry.amount, details:entry.details, remarks:entry.remarks}]),
+    });
+    if(!res.ok) throw new Error('Supabase write failed (' + res.status + ')');
+    setSyncStatus('ok', 'Synced ' + new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}));
+  } catch(err){
+    console.error('Cloud push (victory) failed:', err);
+    setSyncStatus('error', 'Saved locally only — could not reach Supabase.');
+  }
+}
+async function cloudDeleteVictory(id){
+  if(!cloudConfigured()) return;
+  try{
+    const res = await fetch(sbUrl('dashboard_victories?id=eq.' + encodeURIComponent(id)), {
+      method: 'DELETE', headers: sbHeaders({Prefer:'return=minimal'}),
+    });
+    if(!res.ok) throw new Error('Supabase delete failed (' + res.status + ')');
+  } catch(err){
+    console.error('Cloud delete (victory) failed:', err);
+    setSyncStatus('error', 'Removed locally only — could not reach Supabase.');
+  }
+}
+
+// ---------- PERSISTENCE ----------
+// This dashboard is a standalone file opened directly in your own browser (not an
+// in-chat preview), so saving edits to this browser's localStorage is safe and
+// appropriate — nothing leaves your machine, and it survives reloads of this file.
+const LS_KEY = 'rbdk-finance-dashboard-v1';
+function loadStore(){
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if(!raw) return {edits:{}, victories:[]};
+    const parsed = JSON.parse(raw);
+    return {edits: parsed.edits || {}, victories: parsed.victories || []};
+  } catch(e){ return {edits:{}, victories:[]}; }
+}
+function saveStore(){ try { localStorage.setItem(LS_KEY, JSON.stringify(store)); } catch(e){} }
+const store = loadStore();
+
+function applyStoredEdits(type, list){
+  const typeEdits = store.edits[type];
+  if(!typeEdits) return;
+  list.forEach(r=>{ const e = typeEdits[r.id]; if(e) Object.assign(r, e); });
+}
+['payables','receivables','retention','sentBilling','pendingWorks','leadsPipeline'].forEach(type=>{
+  applyStoredEdits(type, DATA[type] || []);
+});
+function persistEdit(type, id, field, value, opts={}){
+  if(!store.edits[type]) store.edits[type] = {};
+  if(!store.edits[type][id]) store.edits[type][id] = {};
+  store.edits[type][id][field] = value;
+  saveStore();
+  if(!opts.fromRemote && cloudConfigured()) cloudPushEdit(type, id, field, value);
+}
+function byId(list){ const m = {}; (list||[]).forEach(r=>m[r.id]=r); return m; }
+const payablesById = byId(DATA.payables);
+const receivablesById = byId(DATA.receivables);
+const retentionById = byId(DATA.retention);
+const sentBillingById = byId(DATA.sentBilling);
+const pendingWorksById = byId(DATA.pendingWorks);
+const leadsById = byId(DATA.leadsPipeline);
+
+// ---------- TOAST ----------
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  if(!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> t.classList.remove('show'), 3800);
+}
+
+// ---------- CHART HELPERS (self-contained canvas, no external libraries/CDN) ----------
+// Declared early (not inside a try-block) so both the Financial Position chart and the
+// Victories chart can call them at any point, including from live edit handlers below.
+function fitCanvas(canvas){
+  const box = canvas.parentElement;
+  const w = box.clientWidth, h = box.clientHeight;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = w * dpr; canvas.height = h * dpr;
+  canvas.style.width = w+'px'; canvas.style.height = h+'px';
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  return {ctx, w, h};
+}
+
+function drawBarChart(canvasId, labels, values, colors){
+  const canvas = document.getElementById(canvasId);
+  const {ctx, w, h} = fitCanvas(canvas);
+  ctx.clearRect(0,0,w,h);
+  ctx.font = '11px -apple-system,BlinkMacSystemFont,Segoe UI,Roboto';
+
+  const padLeft = 62, padBottom = 30, padTop = 16, padRight = 12;
+  const chartW = w - padLeft - padRight, chartH = h - padTop - padBottom;
+  const maxVal = Math.max(...values, 1);
+
+  const steps = 4;
+  ctx.strokeStyle = '#1c2740'; ctx.fillStyle = '#93a2bd'; ctx.lineWidth = 1;
+  for(let i=0;i<=steps;i++){
+    const y = padTop + chartH - (chartH*i/steps);
+    ctx.beginPath(); ctx.moveTo(padLeft,y); ctx.lineTo(w-padRight,y); ctx.stroke();
+    const val = maxVal*i/steps;
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText('₱'+(val/1e6).toFixed(1)+'M', padLeft-8, y);
+  }
+
+  const n = values.length || 1;
+  const slot = chartW/n;
+  const barW = Math.min(70, slot*0.5);
+  values.forEach((v,i)=>{
+    const barH = (v/maxVal) * chartH;
+    const x = padLeft + slot*i + (slot-barW)/2;
+    const y = padTop + chartH - barH;
+    const r = 6;
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.beginPath();
+    ctx.moveTo(x, y+r);
+    ctx.arcTo(x, y, x+r, y, r);
+    ctx.lineTo(x+barW-r, y);
+    ctx.arcTo(x+barW, y, x+barW, y+r, r);
+    ctx.lineTo(x+barW, padTop+chartH);
+    ctx.lineTo(x, padTop+chartH);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#e7ecf5'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.font = '600 11px -apple-system,BlinkMacSystemFont,Segoe UI,Roboto';
+    ctx.fillText(fmt(v), x+barW/2, y-6);
+
+    ctx.fillStyle = '#93a2bd'; ctx.textBaseline = 'top';
+    ctx.font = '11px -apple-system,BlinkMacSystemFont,Segoe UI,Roboto';
+    ctx.fillText(labels[i], x+barW/2, padTop+chartH+8);
+  });
+}
+
+function renderCharts(){
+  drawBarChart('cashChart',
+    ['Receivables','Payables','Receivables less Payables'],
+    [calc['Total Receivables']||0, calc['Total Payables']||0, calc['Net Cash Position']||0],
+    ['#4f8cff','#ff5d6c','#22c9a3']
+  );
+}
+
+function renderVictoriesChart(){
+  const canvas = document.getElementById('victoriesChart');
+  const emptyEl = document.getElementById('victoriesChartEmpty');
+  const summaryEl = document.getElementById('victoriesSummary');
+  if(!canvas) return;
+  const total = victories.reduce((a,v)=> a + (typeof v.amount==='number' ? v.amount : 0), 0);
+  if(summaryEl){
+    summaryEl.textContent = victories.length
+      ? `${victories.length} ${victories.length===1?'victory':'victories'} logged today · ${fmt(total)} total`
+      : '';
+  }
+  if(!victories.length){
+    canvas.style.display = 'none';
+    if(emptyEl) emptyEl.style.display = 'block';
+    return;
+  }
+  canvas.style.display = 'block';
+  if(emptyEl) emptyEl.style.display = 'none';
+  const shown = victories.slice(0, 12);
+  const labels = shown.map(v => {
+    const p = v.project || 'Untitled';
+    return p.length > 16 ? p.slice(0,15)+'…' : p;
+  });
+  const values = shown.map(v => typeof v.amount==='number' ? v.amount : 0);
+  const palette = ['#4f8cff','#22c9a3','#ffb648','#c39bff','#ff5d6c','#93a2bd'];
+  const colors = shown.map((_,i)=> palette[i % palette.length]);
+  drawBarChart('victoriesChart', labels, values, colors);
+}
+
+// ---------- TODAY'S VICTORIES ----------
+let victories = [...(DATA.todaysVictories||[]), ...store.victories];
+let victoriesTableCtl = null;
+function persistVictories(){
+  store.victories = victories.filter(v=>v._manualOrAuto);
+  saveStore();
+}
+function refreshVictoriesUI(){
+  if(victoriesTableCtl) victoriesTableCtl.setRows(victories);
+  try { renderVictoriesChart(); } catch(err){ console.error('Victories chart failed:', err); }
+}
+function addVictory({project, amount, details, remarks}, opts={}){
+  const entry = {
+    id: 'vic-rt-' + Date.now() + '-' + Math.random().toString(36).slice(2,6),
+    project: project || 'Untitled',
+    amount: (typeof amount === 'number') ? amount : (parseFloat(String(amount||'').replace(/[^0-9.-]/g,'')) || null),
+    details: details || '',
+    remarks: remarks || '',
+    _manualOrAuto: true,
+  };
+  victories = [entry, ...victories];
+  persistVictories();
+  refreshVictoriesUI();
+  if(!opts.fromRemote){
+    showToast('🎉 Logged as a victory: ' + entry.project);
+    if(cloudConfigured()) cloudPushVictory(entry);
+  }
+}
+function removeVictory(id, opts={}){
+  victories = victories.filter(v=>v.id!==id);
+  persistVictories();
+  refreshVictoriesUI();
+  if(!opts.fromRemote && cloudConfigured()) cloudDeleteVictory(id);
+}
+
+// ---------- EDIT HANDLERS ----------
+function makeEditHandler(type, byIdMap, opts={}){
+  return function(id, field, value){
+    const rec = byIdMap[id];
+    if(!rec) return;
+    const prev = rec[field];
+    rec[field] = value;
+    persistEdit(type, id, field, value);
+    if(field === 'status' && opts.victoryOnCollected){
+      const wasCollected = String(prev||'').toLowerCase() === 'collected';
+      const isCollected = String(value||'').toLowerCase() === 'collected';
+      if(isCollected && !wasCollected){
+        addVictory({
+          project: rec.project,
+          amount: rec.expected ?? rec.amount ?? rec.billed,
+          details: opts.victoryDetails ? opts.victoryDetails(rec) : 'Status updated to Collected',
+          remarks: 'Auto-logged ' + new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}),
+        });
+      }
+    }
+  };
+}
+const onPayablesEdit = makeEditHandler('payables', payablesById);
+const onReceivablesEdit = makeEditHandler('receivables', receivablesById, {
+  victoryOnCollected:true, victoryDetails: r => (r.description || r.project) + ' collected from ' + (r.client||'client')
+});
+const onRetentionEdit = makeEditHandler('retention', retentionById, {
+  victoryOnCollected:true, victoryDetails: r => 'Retention released — ' + (r.description || r.project)
+});
+const onSentBillingEdit = makeEditHandler('sentBilling', sentBillingById, {
+  victoryOnCollected:true, victoryDetails: r => (r.details || r.project) + ' collected'
+});
+const onPendingWorksEdit = makeEditHandler('pendingWorks', pendingWorksById);
+const onLeadsEdit = makeEditHandler('leadsPipeline', leadsById);
+
+const STATUS_OPTIONS = ['Pending Endorsement','For Billing','Pending Collection','Collected'];
+const LEAD_STATUS_OPTIONS = ['Ongoing','On Hold','Lost','Won'];
+
+function editableStatusSelect(value, id, options){
+  const opts = (value && !options.includes(value)) ? [value, ...options] : options;
+  return `<select class="edit-select" data-current="${esc(value||'')}" data-edit-id="${esc(id)}" data-edit-field="status">` +
+    opts.map(o=>`<option value="${esc(o)}" ${o===value?'selected':''}>${esc(o)}</option>`).join('') +
+    `</select>`;
+}
+function editableText(value, id, field, placeholder){
+  return `<input type="text" class="edit-input" value="${esc(value||'')}" data-edit-id="${esc(id)}" data-edit-field="${esc(field)}" placeholder="${esc(placeholder||'')}">`;
+}
+
+// ---------- TOP 5 SUMMARY ----------
+renderTable(document.getElementById('t-top5pay'), [
+  {label:'Date', field:'date', render:r=>fmtDate(r.date)},
+  {label:'Project Name', field:'project'},
+  {label:'Description', field:'description', desc:true},
+  {label:'Amount', field:'amount', num:true, amount:true, render:r=>fmt(r.amount)},
+  {label:'% Total', field:'pct', num:true, render:r=>fmtPct(r.pct)},
+  {label:'Action Taken', field:'action'},
+], DATA.top5Payables);
+
+renderTable(document.getElementById('t-top5rec'), [
+  {label:'Date', field:'date', render:r=>fmtDate(r.date)},
+  {label:'Project & Description', field:'project'},
+  {label:'Client', field:'client'},
+  {label:'Amount', field:'amount', num:true, amount:true, render:r=>fmt(r.amount)},
+  {label:'% Total', field:'pct', num:true, render:r=>fmtPct(r.pct)},
+  {label:'Action Taken', field:'action', desc:true},
+], DATA.top5Receivables);
+
+renderTable(document.getElementById('t-top5ret'), [
+  {label:'Date', field:'date', render:r=>fmtDate(r.date)},
+  {label:'Project & Description', field:'project'},
+  {label:'Client', field:'client'},
+  {label:'Amount', field:'amount', num:true, amount:true, render:r=>fmt(r.amount)},
+  {label:'% Total', field:'pct', num:true, render:r=>fmtPct(r.pct)},
+  {label:'Action Taken', field:'action'},
+], DATA.top5Retention);
+
+// ---------- PAYABLES ----------
+const payCols = [
+  {label:'Date', field:'date', render:r=>fmtDate(r.date)},
+  {label:'Project', field:'project'},
+  {label:'Description', field:'description', desc:true},
+  {label:'Payee', field:'account'},
+  {label:'Amount', field:'amount', num:true, amount:true, render:r=>fmt(r.amount), sumField:'amount'},
+  {label:'% Total', field:'pct', num:true, render:r=>fmtPct(r.pct)},
+  {label:'Action Taken', field:'action', render:r=>editableText(r.action, r.id, 'action', 'Add action taken…')},
+];
+const payablesSorted = [...DATA.payables].sort((a,b)=> new Date(a.date) - new Date(b.date));
+const payTable = renderTable(document.getElementById('t-payables'), payCols, payablesSorted, {showTotals:true, onEdit:onPayablesEdit});
+payCols[0].totalLabel = `Total (${DATA.payables.length} items)`;
+
+function wireSearch(inputId, countId, cols, allRows, tableCtl, searchFields){
+  const input = document.getElementById(inputId);
+  const count = document.getElementById(countId);
+  function apply(){
+    const q = input.value.trim().toLowerCase();
+    const filtered = !q ? allRows : allRows.filter(r=> searchFields.some(f=> String(r[f]||'').toLowerCase().includes(q)));
+    tableCtl.setRows(filtered);
+    count.textContent = filtered.length + ' of ' + allRows.length + ' records';
+  }
+  input.addEventListener('input', apply);
+  apply();
+}
+wireSearch('search-payables','count-payables', payCols, payablesSorted, payTable, ['project','description','account','action']);
+
+// ---------- RECEIVABLES ----------
+const recCols = [
+  {label:'Date', field:'date', render:r=>fmtDate(r.date)},
+  {label:'Client', field:'client'},
+  {label:'Project', field:'project'},
+  {label:'Description', field:'description', desc:true},
+  {label:'Billed', field:'billed', num:true, amount:true, render:r=>fmt(r.billed), sumField:'billed'},
+  {label:'Net Expected', field:'expected', num:true, amount:true, render:r=>fmt(r.expected), sumField:'expected'},
+  {label:'Status', field:'status', render:r=>editableStatusSelect(r.status, r.id, STATUS_OPTIONS)},
+  {label:'Action Taken', field:'action', render:r=>editableText(r.action, r.id, 'action', 'Add action taken…')},
+  {label:'Days Out', field:'days', num:true, sortField:'_daysnum', render:r=>`<span class="days-flag ${daysClass(r.days)}">${esc(r.days)}</span>`},
+];
+DATA.receivables.forEach(r=> r._daysnum = daysNum(r.days) ?? -1);
+const recSorted = [...DATA.receivables].sort((a,b)=> b._daysnum - a._daysnum);
+const recTable = renderTable(document.getElementById('t-receivables'), recCols, recSorted, {showTotals:true, onEdit:onReceivablesEdit});
+recCols[0].totalLabel = 'Total';
+
+const recStatusSel = document.getElementById('filter-receivables-status');
+[...new Set(DATA.receivables.map(r=>r.status).filter(Boolean))].sort().forEach(s=>{
+  const o = document.createElement('option'); o.value = s; o.textContent = s; recStatusSel.appendChild(o);
+});
+function applyReceivablesFilter(){
+  const q = document.getElementById('search-receivables').value.trim().toLowerCase();
+  const st = recStatusSel.value;
+  const filtered = recSorted.filter(r=>{
+    const matchQ = !q || ['client','project','description','action'].some(f=> String(r[f]||'').toLowerCase().includes(q));
+    const matchSt = !st || r.status === st;
+    return matchQ && matchSt;
+  });
+  recTable.setRows(filtered);
+  document.getElementById('count-receivables').textContent = filtered.length + ' of ' + DATA.receivables.length + ' records';
+}
+document.getElementById('search-receivables').addEventListener('input', applyReceivablesFilter);
+recStatusSel.addEventListener('change', applyReceivablesFilter);
+applyReceivablesFilter();
+
+// ---------- RETENTION ----------
+const retCols = [
+  {label:'Date', field:'date', render:r=>fmtDate(r.date)},
+  {label:'Client', field:'client'},
+  {label:'Project', field:'project'},
+  {label:'Description', field:'description', desc:true},
+  {label:'Billed', field:'billed', num:true, amount:true, render:r=>fmt(r.billed), sumField:'billed'},
+  {label:'Net Expected', field:'expected', num:true, amount:true, render:r=>fmt(r.expected), sumField:'expected'},
+  {label:'Status', field:'status', render:r=>editableStatusSelect(r.status, r.id, STATUS_OPTIONS)},
+  {label:'Action Taken', field:'action', render:r=>editableText(r.action, r.id, 'action', 'Add action taken…')},
+  {label:'Days Out', field:'days', num:true, sortField:'_daysnum', render:r=>`<span class="days-flag ${daysClass(r.days)}">${esc(r.days)}</span>`},
+];
+DATA.retention.forEach(r=> r._daysnum = daysNum(r.days) ?? -1);
+const retSorted = [...DATA.retention].sort((a,b)=> b._daysnum - a._daysnum);
+const retTable = renderTable(document.getElementById('t-retention'), retCols, retSorted, {showTotals:true, onEdit:onRetentionEdit});
+retCols[0].totalLabel = 'Total';
+
+const retStatusSel = document.getElementById('filter-retention-status');
+[...new Set(DATA.retention.map(r=>r.status).filter(Boolean))].sort().forEach(s=>{
+  const o = document.createElement('option'); o.value = s; o.textContent = s; retStatusSel.appendChild(o);
+});
+function applyRetentionFilter(){
+  const q = document.getElementById('search-retention').value.trim().toLowerCase();
+  const st = retStatusSel.value;
+  const filtered = retSorted.filter(r=>{
+    const matchQ = !q || ['client','project','description','action'].some(f=> String(r[f]||'').toLowerCase().includes(q));
+    const matchSt = !st || r.status === st;
+    return matchQ && matchSt;
+  });
+  retTable.setRows(filtered);
+  document.getElementById('count-retention').textContent = filtered.length + ' of ' + DATA.retention.length + ' records';
+}
+document.getElementById('search-retention').addEventListener('input', applyRetentionFilter);
+retStatusSel.addEventListener('change', applyRetentionFilter);
+applyRetentionFilter();
+
+// ---------- PIPELINE ----------
+const pipeCols = [
+  {label:'Client', field:'gencon'},
+  {label:'Project', field:'project', desc:true},
+  {label:'System', field:'system'},
+  {label:'Amount', field:'amount', num:true, amount:true, render:r=> typeof r.amount==='number'?fmt(r.amount):esc(r.amount)},
+  {label:'Budget', field:'budget', num:true, render:r=> typeof r.budget==='number'?fmt(r.budget):esc(r.budget)},
+  {label:'Date Submitted', field:'date', render:r=>fmtDate(r.date)},
+  {label:'VAT', field:'vat'},
+  {label:'Status', field:'status', render:r=>statusBadge(r.status)},
+];
+const pipeSorted = [...DATA.pipeline].sort((a,b)=>{
+  const av = typeof a.amount==='number'?a.amount:0, bv = typeof b.amount==='number'?b.amount:0;
+  return bv-av;
+});
+const pipeTable = renderTable(document.getElementById('t-pipeline'), pipeCols, pipeSorted);
+wireSearch('search-pipeline','count-pipeline', pipeCols, pipeSorted, pipeTable, ['gencon','project','system']);
+
+// ---------- COLLECTION REPORT ----------
+const victoryCols = [
+  {label:'Project', field:'project'},
+  {label:'Amount', field:'amount', num:true, amount:true, render:r=>fmt(r.amount)},
+  {label:'Details', field:'details', desc:true},
+  {label:'Remarks', field:'remarks', desc:true},
+  {label:'', field:'_remove', render:r=> r._manualOrAuto ? `<button class="btn-ghost" data-remove-victory="${esc(r.id)}" style="padding:4px 10px;font-size:11px;">Remove</button>` : ''},
+];
+victoriesTableCtl = renderTable(document.getElementById('t-victories'), victoryCols, victories, {
+  emptyMessage: "No victories logged for today yet — mark a status \"Collected\" below, or use “+ Log a Victory” above."
+});
+document.getElementById('t-victories').addEventListener('click', (e)=>{
+  const btn = e.target.closest('[data-remove-victory]');
+  if(btn) removeVictory(btn.dataset.removeVictory);
+});
+
+const sentCols = [
+  {label:'Project', field:'project'},
+  {label:'Status', field:'status', render:r=>editableStatusSelect(r.status, r.id, STATUS_OPTIONS)},
+  {label:'Details', field:'details', desc:true},
+  {label:'Latest Update', field:'update', desc:true},
+  {label:'Action Taken Today', field:'action_today', render:r=>editableText(r.action_today, r.id, 'action_today', 'Add action taken today…')},
+  {label:'Amount', field:'amount', num:true, amount:true, render:r=>fmt(r.amount), sumField:'amount'},
+  {label:'Date Billed', field:'date_billed', render:r=>fmtDate(r.date_billed)},
+  {label:'Days', field:'days', render:r=>`<span class="days-flag ${daysClass(r.days)}">${esc(r.days)}</span>`},
+];
+sentCols[0].totalLabel = `Total Pending Collection`;
+const sentTable = renderTable(document.getElementById('t-sentbilling'), sentCols, [...DATA.sentBilling].sort((a,b)=>(b.amount||0)-(a.amount||0)), {showTotals:true, onEdit:onSentBillingEdit});
+
+const pwCols = [
+  {label:'Project', field:'project'},
+  {label:'Status', field:'status', render:r=>editableStatusSelect(r.status, r.id, STATUS_OPTIONS)},
+  {label:'Latest Update / Action Taken', field:'update', render:r=>editableText(r.update, r.id, 'update', 'Add latest update…')},
+  {label:'Details', field:'details', desc:true},
+  {label:'Amount', field:'amount', num:true, amount:true, render:r=>fmt(r.amount), sumField:'amount'},
+];
+pwCols[0].totalLabel = 'Total Projected Billables';
+const pwSorted = [...DATA.pendingWorks].sort((a,b)=>(b.amount||0)-(a.amount||0));
+const pwTable = renderTable(document.getElementById('t-pendingworks'), pwCols, pwSorted, {showTotals:true, onEdit:onPendingWorksEdit});
+wireSearch('search-pendingworks','count-pendingworks', pwCols, pwSorted, pwTable, ['project','details','update']);
+
+const leadCols = [
+  {label:'Project', field:'project', desc:true},
+  {label:'Status', field:'status', render:r=>editableStatusSelect(r.status, r.id, LEAD_STATUS_OPTIONS)},
+  {label:'Latest Update / Action Taken', field:'update', render:r=>editableText(r.update, r.id, 'update', 'Add latest update…')},
+  {label:'System', field:'system'},
+  {label:'Amount', field:'amount', num:true, amount:true, render:r=> typeof r.amount==='number'?fmt(r.amount):esc(r.amount)},
+];
+const leadSorted = [...DATA.leadsPipeline].sort((a,b)=>{
+  const av = typeof a.amount==='number'?a.amount:0, bv = typeof b.amount==='number'?b.amount:0;
+  return bv-av;
+});
+const leadTable = renderTable(document.getElementById('t-leads'), leadCols, leadSorted, {onEdit:onLeadsEdit});
+wireSearch('search-leads','count-leads', leadCols, leadSorted, leadTable, ['project','system','update']);
+
+// ---------- EXPORT (Excel .xls and print-to-PDF) — self-contained, no external libraries ----------
+function cellExportText(td){
+  if(!td) return '';
+  // inputs/selects (editable cells) don't expose their live value via textContent — read .value instead
+  const field = td.querySelector('input.edit-input, select.edit-select');
+  if(field) return field.value.trim();
+  return td.textContent.trim();
+}
+function getTableData(tableEl){
+  const headerCells = [...tableEl.querySelectorAll('thead th')];
+  // drop purely decorative columns (e.g. the blank "remove victory" button column)
+  const keepIdx = headerCells
+    .map((th,i)=> th.textContent.replace(/[▲▼]/g,'').trim() !== '' ? i : -1)
+    .filter(i=>i>=0);
+  const header = keepIdx.map(i=> headerCells[i].textContent.replace(/[▲▼]/g,'').trim());
+  const rowVals = tr => { const cells = [...tr.children]; return keepIdx.map(i => cellExportText(cells[i])); };
+  const rows = [...tableEl.querySelectorAll('tbody tr')].map(rowVals);
+  const foot = [...tableEl.querySelectorAll('tfoot tr')].map(rowVals);
+  return {header, rows, foot};
+}
+
+function buildSection(title, tableEl){
+  const d = getTableData(tableEl);
+  return {title, header: d.header, rows: d.rows, foot: d.foot};
+}
+
+function downloadExcel(sections, filename){
+  let html = '<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"></head><body>';
+  sections.forEach(sec=>{
+    html += `<h3>${esc(sec.title)}</h3><table border="1" cellspacing="0" cellpadding="4">`;
+    html += '<tr>'+sec.header.map(h=>`<th style="background:#e8edf5;">${esc(h)}</th>`).join('')+'</tr>';
+    sec.rows.forEach(r=>{ html += '<tr>'+r.map(c=>`<td>${esc(c)}</td>`).join('')+'</tr>'; });
+    (sec.foot||[]).forEach(r=>{ html += '<tr>'+r.map(c=>`<td style="font-weight:bold;">${esc(c)}</td>`).join('')+'</tr>'; });
+    html += '</table><br/>';
+  });
+  html += '</body></html>';
+  const blob = new Blob(['﻿', html], {type:'application/vnd.ms-excel'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename + '.xls';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 3000);
+}
+
+function downloadPDF(sections, filename){
+  const win = window.open('', '_blank');
+  if(!win){ alert('Please allow pop-ups for this site to download a PDF.'); return; }
+  const body = sections.map(sec=>{
+    let t = `<h2>${esc(sec.title)}</h2><table><thead><tr>` +
+      sec.header.map(h=>`<th>${esc(h)}</th>`).join('') + '</tr></thead><tbody>';
+    sec.rows.forEach(r=>{ t += '<tr>'+r.map(c=>`<td>${esc(c)}</td>`).join('')+'</tr>'; });
+    t += '</tbody>';
+    if(sec.foot && sec.foot.length){
+      t += '<tfoot>'+sec.foot.map(r=>'<tr>'+r.map(c=>`<td>${esc(c)}</td>`).join('')+'</tr>').join('')+'</tfoot>';
+    }
+    t += '</table>';
+    return t;
+  }).join('');
+  win.document.write(`<!DOCTYPE html><html><head><title>${esc(filename)}</title><meta charset="UTF-8">
+    <style>
+      body{font-family:Arial,Helvetica,sans-serif;color:#111;padding:24px;}
+      h2{font-size:15px;margin:20px 0 8px;}
+      table{width:100%;border-collapse:collapse;font-size:10.5px;margin-bottom:22px;}
+      th,td{border:1px solid #ccc;padding:5px 7px;text-align:left;word-break:break-word;}
+      th{background:#f0f0f0;}
+      tfoot td{font-weight:bold;background:#f7f7f7;}
+      @media print{ body{padding:0;} }
+    </style></head><body>${body}</body></html>`);
+  win.document.close();
+  win.focus();
+  setTimeout(()=>{ win.print(); }, 400);
+}
+
+function wireExport(prefix, sectionsFn, filename){
+  const xlsBtn = document.getElementById('export-'+prefix+'-xls');
+  const pdfBtn = document.getElementById('export-'+prefix+'-pdf');
+  if(xlsBtn) xlsBtn.addEventListener('click', ()=> downloadExcel(sectionsFn(), filename));
+  if(pdfBtn) pdfBtn.addEventListener('click', ()=> downloadPDF(sectionsFn(), filename));
+}
+
+wireExport('payables', ()=>[buildSection('List of Payables', document.getElementById('t-payables'))], 'payables');
+wireExport('receivables', ()=>[buildSection('List of Receivables', document.getElementById('t-receivables'))], 'receivables');
+wireExport('retention', ()=>[buildSection('List of Retention', document.getElementById('t-retention'))], 'retention');
+wireExport('pipeline', ()=>[buildSection('Pipeline', document.getElementById('t-pipeline'))], 'pipeline');
+wireExport('collection', ()=>[
+  buildSection("Today's Victories", document.getElementById('t-victories')),
+  buildSection('Collections — Sent Billing', document.getElementById('t-sentbilling')),
+  buildSection('Collections — Pending Works / Docs', document.getElementById('t-pendingworks')),
+  buildSection('Leads / Pipeline', document.getElementById('t-leads')),
+], 'daily-collection-report');
+wireExport('overview', ()=>[
+  {
+    title: 'Executive Summary — ' + fmtDate(DATA.reportDate),
+    header: ['Metric','Value'],
+    rows: [
+      ['Total Receivables', fmt(calc['Total Receivables'])],
+      ['Total Payables', fmt(calc['Total Payables'])],
+      ['Receivables less Payables', fmt(calc['Net Cash Position'])],
+    ],
+    foot: []
+  },
+  buildSection('Top 5 Payables', document.getElementById('t-top5pay')),
+  buildSection('Top 5 Receivables', document.getElementById('t-top5rec')),
+  buildSection('Top 5 Retentions', document.getElementById('t-top5ret')),
+], 'executive-summary');
+
+// ---------- VICTORY FORM & RESET ----------
+const victoryForm = document.getElementById('victory-form');
+document.getElementById('btn-open-victory-form').addEventListener('click', ()=>{
+  victoryForm.classList.toggle('open');
+  if(victoryForm.classList.contains('open')) victoryForm.querySelector('input[name=project]').focus();
+});
+document.getElementById('btn-cancel-victory').addEventListener('click', ()=>{
+  victoryForm.classList.remove('open');
+  victoryForm.querySelectorAll('input').forEach(i=>i.value='');
+});
+document.getElementById('btn-save-victory').addEventListener('click', ()=>{
+  const get = n => victoryForm.querySelector(`input[name=${n}]`).value.trim();
+  const project = get('project');
+  if(!project){ victoryForm.querySelector('input[name=project]').focus(); return; }
+  addVictory({project, amount:get('amount'), details:get('details'), remarks:get('remarks')});
+  victoryForm.querySelectorAll('input').forEach(i=>i.value='');
+  victoryForm.classList.remove('open');
+});
+
+document.getElementById('btn-reset-edits').addEventListener('click', ()=>{
+  if(confirm('This clears every edit and logged victory saved in this browser, and reloads the original workbook values. Continue?')){
+    try { localStorage.removeItem(LS_KEY); } catch(e){}
+    location.reload();
+  }
+});
+
+// ---------- CLOUD SYNC: merge + UI wiring ----------
+const TYPE_TO_TABLE = {
+  payables: () => payTable, receivables: () => recTable, retention: () => retTable,
+  sentBilling: () => sentTable, pendingWorks: () => pwTable, leadsPipeline: () => leadTable,
+};
+const TYPE_TO_MAP = {
+  payables: payablesById, receivables: receivablesById, retention: retentionById,
+  sentBilling: sentBillingById, pendingWorks: pendingWorksById, leadsPipeline: leadsById,
+};
+
+async function syncFromCloud(){
+  if(!cloudConfigured()){ setSyncStatus('idle', 'Cloud sync: not configured'); return; }
+  setSyncStatus('idle', 'Syncing…');
+  const remote = await cloudPull();
+  if(!remote) return; // cloudPull already set an error status
+
+  Object.entries(remote.edits || {}).forEach(([type, idMap])=>{
+    const map = TYPE_TO_MAP[type];
+    if(!map) return;
+    Object.entries(idMap).forEach(([id, fields])=>{
+      const rec = map[id];
+      if(rec) Object.assign(rec, fields);
+      Object.entries(fields).forEach(([field, value])=> persistEdit(type, id, field, value, {fromRemote:true}));
+    });
+    const table = TYPE_TO_TABLE[type] && TYPE_TO_TABLE[type]();
+    if(table) table.refresh();
+  });
+
+  const remoteVictories = remote.victories || [];
+  const bakedIn = DATA.todaysVictories || [];
+  victories = [...bakedIn, ...remoteVictories.filter(v=> !bakedIn.some(b=>b.id===v.id))];
+  store.victories = victories.filter(v=>v._manualOrAuto);
+  saveStore();
+  refreshVictoriesUI();
+
+  setSyncStatus('ok', 'Synced ' + new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}));
+}
+
+const cloudSetupForm = document.getElementById('cloud-setup-form');
+function refreshSyncStatusLabel(){
+  if(cloudConfigured()) setSyncStatus('idle', 'Cloud sync: configured — not yet synced this session');
+  else setSyncStatus('idle', 'Cloud sync: not configured');
+}
+document.getElementById('btn-open-cloud-setup').addEventListener('click', ()=>{
+  document.getElementById('cloud-url').value = cloudConfig.url;
+  document.getElementById('cloud-anonkey').value = cloudConfig.anonKey;
+  cloudSetupForm.classList.add('open');
+});
+document.getElementById('btn-cancel-cloud').addEventListener('click', ()=> cloudSetupForm.classList.remove('open'));
+document.getElementById('btn-save-cloud').addEventListener('click', async ()=>{
+  const url = document.getElementById('cloud-url').value.trim();
+  const anonKey = document.getElementById('cloud-anonkey').value.trim();
+  if(!url || !anonKey){ document.getElementById(url ? 'cloud-anonkey' : 'cloud-url').focus(); return; }
+  cloudConfig = {url, anonKey};
+  saveCloudConfig(cloudConfig);
+  cloudSetupForm.classList.remove('open');
+  await syncFromCloud();
+});
+document.getElementById('btn-forget-cloud').addEventListener('click', ()=>{
+  if(!confirm('Stop syncing this device with Supabase? Local edits already made will stay on this device, but nothing further will be sent or pulled.')) return;
+  cloudConfig = {url:'', anonKey:''};
+  saveCloudConfig(cloudConfig);
+  cloudSetupForm.classList.remove('open');
+  refreshSyncStatusLabel();
+});
+document.getElementById('btn-sync-now').addEventListener('click', ()=> syncFromCloud());
+
+refreshSyncStatusLabel();
+if(cloudConfigured()) syncFromCloud();
+
+// ---------- CHARTS (self-contained canvas, no external libraries/CDN) ----------
+function renderChartsSafely(){
+  try { renderCharts(); } catch(err){ console.error('Financial Position chart failed:', err); }
+  try { renderVictoriesChart(); } catch(err){ console.error('Victories chart failed:', err); }
+}
+
+renderChartsSafely();
+let resizeTimer;
+window.addEventListener('resize', ()=>{
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(renderChartsSafely, 150);
+});
+</script>
+</body>
+</html>
