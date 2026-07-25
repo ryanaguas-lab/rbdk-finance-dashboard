@@ -217,6 +217,12 @@
   .app-header-account{display:flex;align-items:center;gap:10px;justify-content:flex-end;flex-wrap:wrap;}
   .app-header-account .who{color:var(--muted);font-size:12px;}
   .app-header-account .who b{color:var(--text);}
+  #onlineUsers{color:var(--green);font-size:12px;}
+  #editingNotice{
+    color:var(--amber);font-size:12px;min-height:16px;text-align:right;
+    transition:opacity .2s; opacity:0;
+  }
+  #editingNotice.show{opacity:1;}
 
   /* ---------- Mobile ---------- */
   @media (max-width: 640px){
@@ -286,9 +292,11 @@
       </div>
       <div class="app-header-account" style="margin-top:10px;">
         <span class="edit-hint" id="syncStatusText">☁ Loading…</span>
+        <span id="onlineUsers"></span>
         <span class="who">Signed in as <b id="userEmailLabel">—</b></span>
         <button class="reset-link" id="btn-logout">Log out</button>
       </div>
+      <div id="editingNotice"></div>
     </div>
   </header>
 
@@ -436,6 +444,26 @@
 // ---------- Supabase project (safe to be public — protected by RLS, not secrecy) ----------
 const SUPABASE_URL = 'https://ajooonbfszrcqulvvgmk.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_LWj6SxjgobhHs-05D1oBuw_ULYTKFFy';
+
+// ---------- REALTIME LIBRARY (optional enhancement, loaded lazily) ----------
+// Everything else in this file talks to Supabase over plain fetch() so the core
+// dashboard never depends on an external script loading successfully (see the
+// Chart.js lesson in the CSS comments above). Live "who's online" / "edits appear
+// instantly" is the one feature that genuinely needs a persistent connection, which
+// isn't practical to hand-roll — so it's loaded from a CDN, but only as an add-on
+// AFTER login succeeds and the core dashboard is already working. If this fails to
+// load for any reason, the dashboard keeps working exactly as it does today; you
+// just won't see live presence/instant sync until a refresh.
+function loadRealtimeLib(){
+  return new Promise((resolve)=>{
+    if(window.supabase){ resolve(window.supabase); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
+    s.onload = ()=> resolve(window.supabase || null);
+    s.onerror = ()=> resolve(null);
+    document.head.appendChild(s);
+  });
+}
 
 // ---------- helpers ----------
 const fmt = n => {
@@ -1388,6 +1416,114 @@ window.addEventListener('resize', ()=>{
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(renderChartsSafely, 150);
 });
+
+// ---------- REALTIME: online presence + live sync + "someone's editing" notice ----------
+const TYPE_TO_MAP = {
+  payables: payablesById, receivables: receivablesById, retention: retentionById,
+  sentBilling: sentBillingById, pendingWorks: pendingWorksById, leadsPipeline: leadsById,
+};
+const TYPE_TO_TABLE = {
+  payables: payTable, receivables: recTable, retention: retTable,
+  sentBilling: sentTable, pendingWorks: pwTable, leadsPipeline: leadTable,
+};
+
+function applyRemoteEdit(row){
+  const map = TYPE_TO_MAP[row.type];
+  const table = TYPE_TO_TABLE[row.type];
+  if(!map) return;
+  const rec = map[row.record_id];
+  if(rec){
+    rec[row.field] = row.value;
+    if(table) table.refresh();
+  }
+}
+function applyRemoteVictoryInsert(row){
+  if(victories.some(v=>v.id===row.id)) return;
+  victories = [{
+    id: row.id, project: row.project,
+    amount: (row.amount===null||row.amount===undefined) ? null : Number(row.amount),
+    details: row.details, remarks: row.remarks, _manualOrAuto: true,
+  }, ...victories];
+  refreshVictoriesUI();
+}
+function applyRemoteVictoryDelete(id){
+  if(!victories.some(v=>v.id===id)) return;
+  victories = victories.filter(v=>v.id!==id);
+  refreshVictoriesUI();
+}
+
+const editingByEmail = {};
+function renderEditingNotice(){
+  const el = document.getElementById('editingNotice');
+  if(!el) return;
+  const others = Object.entries(editingByEmail).filter(([email])=> email !== session.email);
+  if(!others.length){ el.classList.remove('show'); el.textContent=''; return; }
+  el.textContent = others.map(([email, info])=> `✏ ${email} is editing${info.field ? ' ('+info.field+')' : ''}`).join(' · ');
+  el.classList.add('show');
+}
+function markEditing(email, field){
+  if(email === session.email) return;
+  if(editingByEmail[email]) clearTimeout(editingByEmail[email].timer);
+  editingByEmail[email] = { field, timer: setTimeout(()=>{ delete editingByEmail[email]; renderEditingNotice(); }, 8000) };
+  renderEditingNotice();
+}
+function clearEditing(email){
+  if(editingByEmail[email]){ clearTimeout(editingByEmail[email].timer); delete editingByEmail[email]; renderEditingNotice(); }
+}
+
+let broadcastEditing = null;
+const appWrapEl = document.getElementById('app-wrap');
+appWrapEl.addEventListener('focusin', (e)=>{
+  const el = e.target;
+  if(el && el.matches && el.matches('.edit-input, .edit-select') && broadcastEditing) broadcastEditing(el.dataset.editField);
+});
+appWrapEl.addEventListener('focusout', (e)=>{
+  const el = e.target;
+  if(el && el.matches && el.matches('.edit-input, .edit-select') && broadcastEditing) broadcastEditing(null);
+});
+
+function renderOnlineUsers(state){
+  const el = document.getElementById('onlineUsers');
+  if(!el) return;
+  const emails = Object.values(state).map(arr=> arr[0] && arr[0].email).filter(Boolean);
+  const others = [...new Set(emails)].filter(e=> e !== session.email);
+  el.textContent = others.length ? ('🟢 Also online: ' + others.join(', ')) : '🟢 Online';
+}
+
+async function initRealtime(){
+  try{
+    const lib = await loadRealtimeLib();
+    if(!lib){ console.warn('Realtime library unavailable — live sync disabled, everything else still works.'); return; }
+    const rt = lib.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    if(rt.realtime && rt.realtime.setAuth) rt.realtime.setAuth(session.access_token);
+
+    rt.channel('dashboard-data-changes')
+      .on('postgres_changes', {event:'*', schema:'public', table:'dashboard_edits'}, (payload)=>{ if(payload.new) applyRemoteEdit(payload.new); })
+      .on('postgres_changes', {event:'INSERT', schema:'public', table:'dashboard_victories'}, (payload)=>{ if(payload.new) applyRemoteVictoryInsert(payload.new); })
+      .on('postgres_changes', {event:'DELETE', schema:'public', table:'dashboard_victories'}, (payload)=>{ if(payload.old) applyRemoteVictoryDelete(payload.old.id); })
+      .subscribe();
+
+    const presenceChannel = rt.channel('dashboard-presence', {config:{presence:{key: session.email}}});
+    presenceChannel
+      .on('presence', {event:'sync'}, ()=>{ renderOnlineUsers(presenceChannel.presenceState()); })
+      .on('broadcast', {event:'editing'}, (msg)=>{
+        const p = msg.payload || {};
+        if(!p.email) return;
+        if(p.field === null || p.field === undefined) clearEditing(p.email); else markEditing(p.email, p.field);
+      })
+      .subscribe(async (status)=>{
+        if(status === 'SUBSCRIBED') await presenceChannel.track({email: session.email, online_at: new Date().toISOString()});
+      });
+
+    broadcastEditing = (field)=>{
+      try{ presenceChannel.send({type:'broadcast', event:'editing', payload:{email: session.email, field}}); }
+      catch(e){ /* non-critical */ }
+    };
+  } catch(err){
+    console.warn('Realtime setup failed — live sync disabled, everything else still works:', err);
+  }
+}
+initRealtime();
 
 setSyncStatus('ok', 'Synced — signed in as ' + session.email);
 
