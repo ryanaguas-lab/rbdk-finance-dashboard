@@ -534,7 +534,12 @@ function sbHeaders(extra){
     'Content-Type': 'application/json',
   }, extra||{});
 }
-function sbUrl(path){ return cloudConfig.url.replace(/\/$/,'') + '/rest/v1/' + path; }
+function sbUrl(path){
+  // Tolerate either the bare project URL or one that already includes /rest/v1 —
+  // people naturally copy whichever one Supabase's "Data API" page shows them.
+  const base = cloudConfig.url.trim().replace(/\/rest\/v1\/?$/,'').replace(/\/$/,'');
+  return base + '/rest/v1/' + path;
+}
 
 function setSyncStatus(kind, msg){
   const el = document.getElementById('syncStatusText');
