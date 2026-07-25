@@ -218,9 +218,15 @@
   .app-header-account .who{color:var(--muted);font-size:12px;}
   .app-header-account .who b{color:var(--text);}
   #onlineUsers{color:var(--green);font-size:12px;}
+  /* Fixed to the viewport (like the toast below) so it's visible no matter where on
+     the page you're scrolled — the header itself is often off-screen while editing
+     a table further down. */
   #editingNotice{
-    color:var(--amber);font-size:12px;min-height:16px;text-align:right;
-    transition:opacity .2s; opacity:0;
+    position:fixed; top:14px; left:50%; transform:translateX(-50%);
+    background:var(--panel); border:1px solid var(--amber); color:var(--amber);
+    padding:8px 16px; border-radius:10px; font-size:12.5px; font-weight:600;
+    box-shadow:0 8px 30px rgba(0,0,0,.4); white-space:nowrap;
+    opacity:0; pointer-events:none; transition:opacity .2s; z-index:998;
   }
   #editingNotice.show{opacity:1;}
 
@@ -251,6 +257,7 @@
     .btn-primary, .btn-ghost{padding:10px 16px;} /* larger tap targets */
     .grid-2{grid-template-columns:1fr;}
     .toast{left:12px;right:12px;bottom:12px;max-width:none;}
+    #editingNotice{left:12px;right:12px;transform:none;text-align:center;white-space:normal;}
   }
 </style>
 </head>
