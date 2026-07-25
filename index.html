@@ -241,6 +241,7 @@
     header.top{flex-direction:column;align-items:flex-start;gap:12px;}
     .report-date{text-align:left;width:100%;}
     .export-row{justify-content:flex-start;}
+    .app-header-account{justify-content:flex-start;text-align:left;font-size:11.5px;row-gap:4px;}
     .kpis{grid-template-columns:1fr 1fr;gap:10px;}
     .kpi{padding:13px 14px;}
     .kpi .value{font-size:18px;}
@@ -251,17 +252,36 @@
     .toolbar select{flex:1 1 auto;}
     .toolbar .count{margin-left:0;flex:1 1 100%;order:5;}
     .export-btn{padding:9px 13px;font-size:12px;}
-    table{font-size:12px;}
-    thead th{padding:10px 8px;font-size:10.5px;}
-    tbody td{padding:9px 8px;}
-    .desc-cell{max-width:160px;}
-    .edit-select, .edit-input{min-width:110px;font-size:13px;padding:7px 8px;} /* larger tap targets */
-    .table-wrap{-webkit-overflow-scrolling:touch;max-height:520px;}
+    .edit-select, .edit-input{font-size:13px;padding:7px 8px;} /* larger tap targets */
+    .table-wrap{-webkit-overflow-scrolling:touch;max-height:560px;}
     .victory-form{flex-direction:column;align-items:stretch;}
     .victory-form input{width:100%;}
     .btn-primary, .btn-ghost{padding:10px 16px;} /* larger tap targets */
     .grid-2{grid-template-columns:1fr;}
     .toast{left:12px;right:12px;bottom:12px;max-width:none;}
+
+    /* Wide multi-column tables don't work squeezed onto a phone — turn each row
+       into a stacked card instead: label on the left (from data-label), value on
+       the right, one field per line. Column-header sorting isn't available in
+       this view; search/filter above the table still works. */
+    .table-wrap table thead{display:none;}
+    .table-wrap table, .table-wrap table tbody, .table-wrap table tr{display:block;width:100%;}
+    .table-wrap table tr{background:var(--panel);border-bottom:8px solid var(--bg);}
+    .table-wrap table tr:last-child{border-bottom:none;}
+    .table-wrap table td{
+      display:block; position:relative; padding:8px 10px 8px 44%;
+      text-align:right; border-bottom:1px solid #1a2540; min-height:18px;
+      word-break:break-word; max-width:none; font-size:13px;
+    }
+    .table-wrap table tr td:last-child{border-bottom:none;}
+    .table-wrap table td::before{
+      content:attr(data-label); position:absolute; left:10px; top:8px; width:40%;
+      text-align:left; color:var(--muted); font-size:10px; text-transform:uppercase;
+      letter-spacing:.03em; font-weight:600;
+    }
+    .table-wrap table tfoot tr{background:#0f1830;border-top:2px solid var(--border);border-bottom:none;}
+    .table-wrap table tfoot td{font-weight:700;}
+    .table-wrap table td .edit-select, .table-wrap table td .edit-input{width:100%;min-width:0;}
   }
 </style>
 </head>
@@ -533,11 +553,14 @@ function renderTable(tableEl, columns, rows, opts={}) {
       `<th class="${c.num?'num':''}" data-i="${i}">${c.label}${sortCol===i?`<span class="arrow">${sortDir===1?'▲':'▼'}</span>`:''}</th>`
     ).join('')}</tr></thead>`;
 
+    // data-label lets the mobile view turn each wide row into a readable stacked
+    // card (label on the left, value on the right) instead of squeezing every
+    // column into a phone-width table.
     const body = currentRows.map(r => {
       return '<tr>' + columns.map(c => {
         const v = c.render ? c.render(r) : r[c.field];
         const cls = [c.num?'num':'', c.amount?'amount':'', c.desc?'desc-cell':''].filter(Boolean).join(' ');
-        return `<td class="${cls}">${v}</td>`;
+        return `<td class="${cls}" data-label="${esc(c.label)}">${v}</td>`;
       }).join('') + '</tr>';
     }).join('');
 
@@ -545,8 +568,8 @@ function renderTable(tableEl, columns, rows, opts={}) {
     if(opts.showTotals){
       foot = '<tfoot><tr>' + columns.map(c=>{
         if(c.totalLabel) return `<td>${c.totalLabel}</td>`;
-        if(c.sumField) return `<td class="num">${fmt(computeTotal(c))}</td>`;
-        return '<td></td>';
+        if(c.sumField) return `<td class="num" data-label="${esc(c.label)}">${fmt(computeTotal(c))}</td>`;
+        return `<td data-label="${esc(c.label)}"></td>`;
       }).join('') + '</tr></tfoot>';
     }
 
@@ -1538,7 +1561,7 @@ async function initRealtime(){
 }
 initRealtime();
 
-setSyncStatus('ok', 'Synced — signed in as ' + session.email);
+setSyncStatus('ok', 'Synced'); // "Signed in as ..." already shows the email right next to this
 
 } // end boot()
 
