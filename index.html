@@ -218,17 +218,22 @@
   .app-header-account .who{color:var(--muted);font-size:12px;}
   .app-header-account .who b{color:var(--text);}
   #onlineUsers{color:var(--green);font-size:12px;}
-  /* Fixed to the viewport (like the toast below) so it's visible no matter where on
-     the page you're scrolled — the header itself is often off-screen while editing
-     a table further down. */
-  #editingNotice{
-    position:fixed; top:14px; left:50%; transform:translateX(-50%);
-    background:var(--panel); border:1px solid var(--amber); color:var(--amber);
-    padding:8px 16px; border-radius:10px; font-size:12.5px; font-weight:600;
-    box-shadow:0 8px 30px rgba(0,0,0,.4); white-space:nowrap;
-    opacity:0; pointer-events:none; transition:opacity .2s; z-index:998;
+
+  /* The tab bar sticks to the top of the viewport while scrolling, and the editing
+     notice sits pinned directly above it as one unit — so wherever you're scrolled
+     in the tables below, both stay visible right at the top, exactly where you're
+     looking, instead of getting lost up near the header. */
+  .sticky-tabs-wrap{
+    position:sticky; top:0; z-index:40;
+    background:var(--bg); padding-top:10px; margin-top:-10px;
   }
-  #editingNotice.show{opacity:1;}
+  #editingNotice{
+    max-height:0; overflow:hidden; opacity:0;
+    background:#2a2110; border:1px solid var(--amber); color:var(--amber);
+    text-align:center; font-size:12.5px; font-weight:600; border-radius:8px;
+    transition:max-height .2s, opacity .2s, margin-bottom .2s;
+  }
+  #editingNotice.show{max-height:40px; opacity:1; padding:8px 14px; margin-bottom:8px;}
 
   /* ---------- Mobile ---------- */
   @media (max-width: 640px){
@@ -257,7 +262,6 @@
     .btn-primary, .btn-ghost{padding:10px 16px;} /* larger tap targets */
     .grid-2{grid-template-columns:1fr;}
     .toast{left:12px;right:12px;bottom:12px;max-width:none;}
-    #editingNotice{left:12px;right:12px;transform:none;text-align:center;white-space:normal;}
   }
 </style>
 </head>
@@ -303,7 +307,6 @@
         <span class="who">Signed in as <b id="userEmailLabel">—</b></span>
         <button class="reset-link" id="btn-logout">Log out</button>
       </div>
-      <div id="editingNotice"></div>
     </div>
   </header>
 
@@ -325,14 +328,17 @@
   <div class="section-title">Top 5 Retentions</div>
   <div class="table-wrap" style="margin-bottom:26px;"><table id="t-top5ret"></table></div>
 
-  <nav class="tabs" id="tabs">
-    <button data-tab="payables" class="active">Payables</button>
-    <button data-tab="receivables">Receivables</button>
-    <button data-tab="retention">Retention</button>
-    <button data-tab="pipeline">Pipeline</button>
-    <button data-tab="collection">Daily Collection Report</button>
-    <button data-tab="activity">Activity Log</button>
-  </nav>
+  <div class="sticky-tabs-wrap">
+    <div id="editingNotice"></div>
+    <nav class="tabs" id="tabs">
+      <button data-tab="payables" class="active">Payables</button>
+      <button data-tab="receivables">Receivables</button>
+      <button data-tab="retention">Retention</button>
+      <button data-tab="pipeline">Pipeline</button>
+      <button data-tab="collection">Daily Collection Report</button>
+      <button data-tab="activity">Activity Log</button>
+    </nav>
+  </div>
 
   <div class="tabpanel active" id="tab-payables">
     <div class="toolbar">
