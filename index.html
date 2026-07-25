@@ -727,6 +727,14 @@ async function loadAndRenderActivityLog(){
 
 // ---------- FETCH BASE DATA (post-login only) ----------
 function numOr0(v){ return typeof v === 'number' ? v : 0; }
+// Text columns always come back from Supabase as JSON strings, even for cleanly
+// numeric values — turn the ones that parse as a plain number back into numbers,
+// leave genuinely non-numeric strings (multi-value cells, "#ERROR!", etc.) as-is.
+function coerceMaybeNumber(v){
+  if(v === null || v === undefined || typeof v === 'number') return v;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : v;
+}
 
 async function sbGet(path){
   const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {headers: authHeaders()});
@@ -754,9 +762,14 @@ async function fetchAllData(){
   // JS/HTML has always used "update" as the field name — map it back here.
   const sentBilling = sentBillingRaw.map(r=> Object.assign({}, r, {update: r.update_text}));
   const pendingWorks = pendingWorksRaw.map(r=> Object.assign({}, r, {update: r.update_text}));
-  const leadsPipeline = leadsPipelineRaw.map(r=> Object.assign({}, r, {update: r.update_text}));
+  const leadsPipeline = leadsPipelineRaw.map(r=> Object.assign({}, r, {update: r.update_text, amount: coerceMaybeNumber(r.amount)}));
 
-  const payables = payablesRaw, receivables = receivablesRaw, retention = retentionRaw, pipeline = pipelineRaw;
+  const payables = payablesRaw, receivables = receivablesRaw, retention = retentionRaw;
+  // pipeline.amount and pipeline.budget are TEXT columns (a few rows hold multi-value
+  // strings like "1,110,817.58\n\n1,259,297.58"), so Supabase always returns them as
+  // JSON strings — convert the clean ones back to real numbers so formatting/sorting
+  // behaves the same as it did when this data was embedded JSON.
+  const pipeline = pipelineRaw.map(r=> Object.assign({}, r, {amount: coerceMaybeNumber(r.amount), budget: coerceMaybeNumber(r.budget)}));
 
   // apply saved edits (Supabase is the single source of truth — nothing local to merge)
   const edits = {};
