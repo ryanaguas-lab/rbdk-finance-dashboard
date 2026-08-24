@@ -1124,7 +1124,6 @@ renderTable(document.getElementById('t-top5pay'), [
   {label:'Description', field:'description', desc:true},
   {label:'Amount', field:'amount', num:true, amount:true, render:r=>fmt(r.amount)},
   {label:'% Total', field:'pct', num:true, render:r=>fmtPct(r.pct)},
-  {label:'Action Taken', field:'action'},
 ], DATA.top5Payables);
 
 renderTable(document.getElementById('t-top5rec'), [
@@ -1153,7 +1152,6 @@ const payCols = [
   {label:'Payee', field:'account'},
   {label:'Amount', field:'amount', num:true, amount:true, render:r=>fmt(r.amount), sumField:'amount'},
   {label:'% Total', field:'pct', num:true, render:r=>fmtPct(r.pct)},
-  {label:'Action Taken', field:'action', render:r=>editableText(r.action, r.id, 'action', 'Add action taken…')},
 ];
 const payablesSorted = [...DATA.payables].sort((a,b)=> new Date(a.date) - new Date(b.date));
 const payTable = renderTable(document.getElementById('t-payables'), payCols, payablesSorted, {showTotals:true, onEdit:onPayablesEdit});
@@ -1171,7 +1169,7 @@ function wireSearch(inputId, countId, cols, allRows, tableCtl, searchFields){
   input.addEventListener('input', apply);
   apply();
 }
-wireSearch('search-payables','count-payables', payCols, payablesSorted, payTable, ['project','description','account','action']);
+wireSearch('search-payables','count-payables', payCols, payablesSorted, payTable, ['project','description','account']);
 
 // ---------- RECEIVABLES ----------
 const recCols = [
