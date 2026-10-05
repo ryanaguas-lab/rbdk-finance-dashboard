@@ -390,6 +390,15 @@
       <button class="export-btn" id="export-retention-pdf">⬇ PDF</button>
     </div>
     <div class="table-wrap"><table id="t-retention"></table></div>
+
+    <div class="section-title">Long-term Retention <span class="edit-hint">— on-going projects; shown separately and NOT included in the Retention or Receivables totals</span></div>
+    <div class="toolbar">
+      <input type="text" id="search-longterm" placeholder="Search client, project, description...">
+      <span class="count" id="count-longterm"></span>
+      <button class="export-btn" id="export-longterm-xls">⬇ Excel</button>
+      <button class="export-btn" id="export-longterm-pdf">⬇ PDF</button>
+    </div>
+    <div class="table-wrap"><table id="t-longterm"></table></div>
   </div>
 
   <div class="tabpanel" id="tab-pipeline">
@@ -791,6 +800,11 @@ async function loadAndRenderActivityLog(){
 
 // ---------- FETCH BASE DATA (post-login only) ----------
 function numOr0(v){ return typeof v === 'number' ? v : 0; }
+// A retention row whose description is labelled "Long-term" (e.g. "Long-term - Badoc
+// CO1") is an on-going project's retention. Those rows are kept in the same Supabase
+// `retention` table but are shown and summed separately: never inside the Retention
+// total, the Receivables total, or the Top 5 Retentions.
+function isLongTerm(r){ return /long[\s\-\u2010-\u2015]*term/i.test(String((r && r.description) || '')); }
 // Text columns always come back from Supabase as JSON strings, even for cleanly
 // numeric values — turn the ones that parse as a plain number back into numbers,
 // leave genuinely non-numeric strings (multi-value cells, "#ERROR!", etc.) as-is.
@@ -828,7 +842,7 @@ async function fetchAllData(){
   const pendingWorks = pendingWorksRaw.map(r=> Object.assign({}, r, {update: r.update_text}));
   const leadsPipeline = leadsPipelineRaw.map(r=> Object.assign({}, r, {update: r.update_text, amount: coerceMaybeNumber(r.amount)}));
 
-  const payables = payablesRaw, receivables = receivablesRaw, retention = retentionRaw;
+  const payables = payablesRaw, receivables = receivablesRaw, retentionAll = retentionRaw;
   // pipeline.amount and pipeline.budget are TEXT columns (a few rows hold multi-value
   // strings like "1,110,817.58\n\n1,259,297.58"), so Supabase always returns them as
   // JSON strings — convert the clean ones back to real numbers so formatting/sorting
@@ -849,10 +863,14 @@ async function fetchAllData(){
   }
   applyEdits('payables', payables);
   applyEdits('receivables', receivables);
-  applyEdits('retention', retention);
+  applyEdits('retention', retentionAll);
   applyEdits('sentBilling', sentBilling);
   applyEdits('pendingWorks', pendingWorks);
   applyEdits('leadsPipeline', leadsPipeline);
+
+  // Split retention: regular rows vs rows labelled "Long-term" in the description.
+  const retention = retentionAll.filter(r=> !isLongTerm(r));
+  const longTerm = retentionAll.filter(isLongTerm);
 
   const victories = victRows.map(r=>({
     id: r.id, project: r.project,
@@ -862,10 +880,12 @@ async function fetchAllData(){
 
   const totalReceivables = receivables.reduce((a,r)=>a+numOr0(r.expected),0);
   const totalPayables = payables.reduce((a,r)=>a+numOr0(r.amount),0);
+  const totalLongTerm = longTerm.reduce((a,r)=>a+numOr0(r.expected),0);
   const calc = {
     'Total Receivables': totalReceivables,
     'Total Payables': totalPayables,
     'Net Cash Position': totalReceivables - totalPayables,
+    'Long-term Retention': totalLongTerm,
   };
 
   const top5Payables = [...payables].sort((a,b)=> numOr0(b.amount)-numOr0(a.amount)).slice(0,5);
@@ -883,7 +903,7 @@ async function fetchAllData(){
 
   return {
     reportDate, calc,
-    payables, receivables, retention, pipeline,
+    payables, receivables, retention, longTerm, retentionAll, pipeline,
     sentBilling, pendingWorks, leadsPipeline,
     top5Payables, top5Receivables, top5Retention,
     todaysVictories: victories,
@@ -964,6 +984,7 @@ const kpiDefs = [
   {label:'Total Receivables', value: calc['Total Receivables'], cls:'receivables'},
   {label:'Total Payables', value: calc['Total Payables'], cls:'payables'},
   {label:'Receivables less Payables', value: calc['Net Cash Position'], cls:'net'},
+  {label:'Long-term Retention (separate)', value: calc['Long-term Retention'], cls:'retention'},
 ];
 document.getElementById('kpiGrid').innerHTML = kpiDefs.map(k=>`
   <div class="kpi ${k.cls}">
@@ -987,7 +1008,7 @@ document.querySelectorAll('#tabs button').forEach(btn=>{
 function byId(list){ const m = {}; (list||[]).forEach(r=>m[r.id]=r); return m; }
 const payablesById = byId(DATA.payables);
 const receivablesById = byId(DATA.receivables);
-const retentionById = byId(DATA.retention);
+const retentionById = byId(DATA.retentionAll);   // includes Long-term rows, so edits work in both tables
 const sentBillingById = byId(DATA.sentBilling);
 const pendingWorksById = byId(DATA.pendingWorks);
 const leadsById = byId(DATA.leadsPipeline);
@@ -1219,7 +1240,7 @@ const retCols = [
   {label:'Action Taken', field:'action', render:r=>editableText(r.action, r.id, 'action', 'Add action taken…')},
   {label:'Days Out', field:'days', num:true, sortField:'_daysnum', render:r=>`<span class="days-flag ${daysClass(r.days)}">${esc(r.days)}</span>`},
 ];
-DATA.retention.forEach(r=> r._daysnum = daysNum(r.days) ?? -1);
+DATA.retentionAll.forEach(r=> r._daysnum = daysNum(r.days) ?? -1);
 const retSorted = [...DATA.retention].sort((a,b)=> b._daysnum - a._daysnum);
 const retTable = renderTable(document.getElementById('t-retention'), retCols, retSorted, {showTotals:true, onEdit:onRetentionEdit});
 retCols[0].totalLabel = 'Total';
@@ -1242,6 +1263,14 @@ function applyRetentionFilter(){
 document.getElementById('search-retention').addEventListener('input', applyRetentionFilter);
 retStatusSel.addEventListener('change', applyRetentionFilter);
 applyRetentionFilter();
+
+// ---------- LONG-TERM RETENTION (separate table, own total, not in Retention/Receivables) ----------
+const ltSorted = [...DATA.longTerm].sort((a,b)=> numOr0(b.expected) - numOr0(a.expected));
+const ltTable = renderTable(document.getElementById('t-longterm'), retCols, ltSorted, {
+  showTotals:true, onEdit:onRetentionEdit,
+  emptyMessage:'No Long-term retention rows yet - rows whose description is labelled "Long-term" appear here.'
+});
+wireSearch('search-longterm','count-longterm', retCols, ltSorted, ltTable, ['client','project','description','action']);
 
 // ---------- PIPELINE ----------
 const pipeCols = [
@@ -1397,6 +1426,7 @@ function wireExport(prefix, sectionsFn, filename){
 wireExport('payables', ()=>[buildSection('List of Payables', document.getElementById('t-payables'))], 'payables');
 wireExport('receivables', ()=>[buildSection('List of Receivables', document.getElementById('t-receivables'))], 'receivables');
 wireExport('retention', ()=>[buildSection('List of Retention', document.getElementById('t-retention'))], 'retention');
+wireExport('longterm', ()=>[buildSection('Long-term Retention (separate from Retention and Receivables)', document.getElementById('t-longterm'))], 'long-term-retention');
 wireExport('pipeline', ()=>[buildSection('Pipeline', document.getElementById('t-pipeline'))], 'pipeline');
 wireExport('collection', ()=>[
   buildSection("Today's Victories", document.getElementById('t-victories')),
@@ -1412,6 +1442,7 @@ wireExport('overview', ()=>[
       ['Total Receivables', fmt(calc['Total Receivables'])],
       ['Total Payables', fmt(calc['Total Payables'])],
       ['Receivables less Payables', fmt(calc['Net Cash Position'])],
+      ['Long-term Retention (separate, not included above)', fmt(calc['Long-term Retention'])],
     ],
     foot: []
   },
@@ -1469,6 +1500,7 @@ function applyRemoteEdit(row){
   if(rec){
     rec[row.field] = row.value;
     if(table) table.refresh();
+    if(row.type === 'retention') ltTable.refresh();   // the record may live in the Long-term table
   }
 }
 function applyRemoteVictoryInsert(row){
