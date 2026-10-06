@@ -1390,27 +1390,86 @@ function downloadExcel(sections, filename){
 function downloadPDF(sections, filename){
   const win = window.open('', '_blank');
   if(!win){ alert('Please allow pop-ups for this site to download a PDF.'); return; }
+  const isNum = v => /^-?[\d,]+(\.\d+)?%?$/.test(String(v).trim());
+  const badgeCls = v => ({'Pending Collection':'pending-collection','Pending Endorsement':'pending-endorsement','For Billing':'for-billing','Collected':'collected','Ongoing':'ongoing'})[String(v).trim()];
+  const kpiCls = label => /less/i.test(label) ? 'net' : /long-term/i.test(label) ? 'retention' : /payable/i.test(label) ? 'payables' : /retention/i.test(label) ? 'retention' : 'receivables';
+  const cell = (c, tag) => {
+    const num = isNum(c), b = badgeCls(c);
+    const inner = b ? `<span class="badge ${b}">${esc(c)}</span>` : esc(c);
+    return `<${tag}${num ? ' class="num"' : ''}>${inner}</${tag}>`;
+  };
   const body = sections.map(sec=>{
-    let t = `<h2>${esc(sec.title)}</h2><table><thead><tr>` +
-      sec.header.map(h=>`<th>${esc(h)}</th>`).join('') + '</tr></thead><tbody>';
-    sec.rows.forEach(r=>{ t += '<tr>'+r.map(c=>`<td>${esc(c)}</td>`).join('')+'</tr>'; });
+    if(sec.kpis){
+      return `<div class="section-title">${esc(sec.title)}</div><div class="kpis">` +
+        sec.rows.map(r=>`<div class="kpi ${kpiCls(r[0])}"><div class="label">${esc(r[0])}</div><div class="value">${esc(r[1])}</div><div class="bar"><span></span></div></div>`).join('') +
+        '</div>';
+    }
+    let t = `<div class="section-title">${esc(sec.title)}</div><div class="table-wrap"><table><thead><tr>` +
+      sec.header.map((h,i)=>`<th${(sec.rows.length && sec.rows.every(r=>r[i]===''||r[i]==null||isNum(r[i])) && sec.rows.some(r=>isNum(r[i]))) ? ' class="num"' : ''}>${esc(h)}</th>`).join('') + '</tr></thead><tbody>';
+    sec.rows.forEach(r=>{ t += '<tr>'+r.map(c=>cell(c,'td')).join('')+'</tr>'; });
     t += '</tbody>';
     if(sec.foot && sec.foot.length){
-      t += '<tfoot>'+sec.foot.map(r=>'<tr>'+r.map(c=>`<td>${esc(c)}</td>`).join('')+'</tr>').join('')+'</tfoot>';
+      t += '<tfoot>'+sec.foot.map(r=>'<tr>'+r.map(c=>cell(c,'td')).join('')+'</tr>').join('')+'</tfoot>';
     }
-    t += '</table>';
+    t += '</table></div>';
     return t;
   }).join('');
   win.document.write(`<!DOCTYPE html><html><head><title>${esc(filename)}</title><meta charset="UTF-8">
     <style>
-      body{font-family:Arial,Helvetica,sans-serif;color:#111;padding:24px;}
-      h2{font-size:15px;margin:20px 0 8px;}
-      table{width:100%;border-collapse:collapse;font-size:10.5px;margin-bottom:22px;}
-      th,td{border:1px solid #ccc;padding:5px 7px;text-align:left;word-break:break-word;}
-      th{background:#f0f0f0;}
-      tfoot td{font-weight:bold;background:#f7f7f7;}
-      @media print{ body{padding:0;} }
-    </style></head><body>${body}</body></html>`);
+      :root{
+        --bg:#0b1220; --panel:#121b2e; --panel2:#0e1626; --border:#22304a;
+        --text:#e7ecf5; --muted:#93a2bd; --accent:#4f8cff; --accent2:#22c9a3;
+        --red:#ff5d6c; --amber:#ffb648; --green:#22c9a3; --radius:14px;
+      }
+      *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+      @page{size:A4 landscape;margin:0;}
+      html{background:var(--bg);}
+      body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+        background:var(--bg);color:var(--text);padding:14mm 12mm;}
+      header.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:22px;}
+      .brand{display:flex;align-items:center;gap:14px;}
+      .logo{width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+        display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;color:#0b1220;flex-shrink:0;}
+      h1{font-size:20px;margin:0;letter-spacing:.2px;}
+      .sub{color:var(--muted);font-size:13px;margin-top:2px;}
+      .report-date{text-align:right;font-size:13px;color:var(--muted);}
+      .report-date b{color:var(--text);font-size:14px;}
+      .section-title{font-size:15px;font-weight:700;margin:22px 0 10px;color:var(--text);break-after:avoid;}
+      .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:10px;}
+      .kpi{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--border);
+        border-radius:var(--radius);padding:16px 18px;break-inside:avoid;}
+      .kpi .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
+      .kpi .value{font-size:22px;font-weight:700;margin-top:6px;}
+      .kpi .bar{height:4px;border-radius:2px;margin-top:12px;background:#1c2740;overflow:hidden;}
+      .kpi .bar span{display:block;height:100%;border-radius:2px;width:100%;}
+      .kpi.receivables .bar span{background:var(--accent);}
+      .kpi.payables .bar span{background:var(--red);}
+      .kpi.retention .bar span{background:var(--amber);}
+      .kpi.net .bar span{background:var(--green);}
+      .table-wrap{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+      table{width:100%;border-collapse:collapse;font-size:11.5px;}
+      thead{display:table-header-group;}
+      thead th{background:#16203a;color:var(--muted);text-align:left;padding:10px 12px;font-weight:600;
+        font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);}
+      tbody td{padding:9px 12px;border-bottom:1px solid #1a2540;vertical-align:top;word-break:break-word;}
+      tbody tr:last-child td{border-bottom:none;}
+      tr{break-inside:avoid;}
+      td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;}
+      tfoot td{padding:11px 12px;font-weight:700;background:#0f1830;border-top:2px solid var(--border);}
+      .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10.5px;font-weight:700;letter-spacing:.02em;white-space:nowrap;}
+      .badge.pending-collection{background:#3a2a12;color:var(--amber);}
+      .badge.pending-endorsement{background:#1f2a44;color:var(--accent);}
+      .badge.for-billing{background:#2a1f44;color:#c39bff;}
+      .badge.collected,.badge.ongoing{background:#123a2f;color:var(--green);}
+    </style></head><body>
+    <header class="top">
+      <div class="brand"><div class="logo">RBD</div>
+        <div><h1>RBD Kernstock — Finance Dashboard</h1><div class="sub">Payables · Receivables · Retention · Pipeline</div></div>
+      </div>
+      <div class="report-date">Report generated<br><b>${esc(fmtDate(DATA.reportDate))}</b></div>
+    </header>
+    ${body}
+    </body></html>`);
   win.document.close();
   win.focus();
   setTimeout(()=>{ win.print(); }, 400);
@@ -1437,6 +1496,7 @@ wireExport('collection', ()=>[
 wireExport('overview', ()=>[
   {
     title: 'Executive Summary — ' + fmtDate(DATA.reportDate),
+    kpis: true,
     header: ['Metric','Value'],
     rows: [
       ['Total Receivables', fmt(calc['Total Receivables'])],
