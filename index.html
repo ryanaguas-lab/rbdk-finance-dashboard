@@ -842,7 +842,9 @@ async function fetchAllData(){
   const pendingWorks = pendingWorksRaw.map(r=> Object.assign({}, r, {update: r.update_text}));
   const leadsPipeline = leadsPipelineRaw.map(r=> Object.assign({}, r, {update: r.update_text, amount: coerceMaybeNumber(r.amount)}));
 
-  const payables = payablesRaw, receivables = receivablesRaw, retentionAll = retentionRaw;
+  // Paid payables are retired by tagging their id with a DEL-/DELB- prefix (the daily update
+  // cannot DELETE rows); only live PAY-26-* rows are shown and counted.
+  const payables = payablesRaw.filter(r=> /^PAY-26-/.test(r.id)), receivables = receivablesRaw, retentionAll = retentionRaw;
   // pipeline.amount and pipeline.budget are TEXT columns (a few rows hold multi-value
   // strings like "1,110,817.58\n\n1,259,297.58"), so Supabase always returns them as
   // JSON strings — convert the clean ones back to real numbers so formatting/sorting
