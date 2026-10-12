@@ -900,8 +900,9 @@ async function fetchAllData(){
 
   // Report date: latest payables/receivables date in the data — a stand-in for
   // "as of" now that there's no separate embedded report-date field.
-  const allDates = [...payables, ...receivables].map(r=>r.date).filter(Boolean).sort();
-  const reportDate = allDates.length ? allDates[allDates.length-1] : new Date().toISOString().slice(0,10);
+  // Use today's date (Manila): payables include scheduled installments dated into 2027,
+  // so the "latest date in the data" is not the report date.
+  const reportDate = new Date().toLocaleDateString('en-CA', {timeZone:'Asia/Manila'});
 
   return {
     reportDate, calc,
